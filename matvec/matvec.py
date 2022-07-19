@@ -1,16 +1,14 @@
 from ctypes import *
 from array import array
 import os
-import inspect
 
 sizetype = c_longlong
 valuetype = POINTER(c_double)
 c_int_p = POINTER(sizetype)
 
-def set_lib_file(libfile):
-    global lib
 
-    #libfile = r"build\lib.win-amd64-3.10\matvec\matvec\py.pyd"
+def load_matvec(libfile, threads=None):
+    global lib
     lib = CDLL(libfile)
 
     for constructor in [lib.vector, lib.matrix]:
@@ -23,14 +21,18 @@ def set_lib_file(libfile):
     lib.set.argtypes = [c_void_p, sizetype, c_double]
     lib.len.argtypes = [c_void_p]
     lib.len.restype = sizetype
-    lib.v_sum.argtypes = [c_void_p]
-    lib.v_sum.restype = c_double
     lib.dot.argtypes = [c_void_p, c_void_p]
     lib.dot.restype = c_double
     lib.assign.argtypes = [c_void_p, c_void_p]
-    lib.get_values.argtypes = [c_void_p]
-    lib.get_values.restype = c_void_p
+    lib.repeat.argtypes = [c_double, sizetype]
+    lib.repeat.restype = c_void_p
+
+    for operation in [lib.get_values, lib.get_rows, lib.get_cols]:
+        operation.argtypes = [c_void_p]
+        operation.restype = c_void_p
     lib.set_number_of_threads.argtypes = [c_int]
+    lib.v_copy.argtypes = [c_void_p]
+    lib.v_copy.restype = c_void_p
 
     for operation in [lib.add, lib.sub, lib.v_mult, lib.v_pow, lib.v_div, lib.multiply]:
         operation.argtypes = [c_void_p, c_void_p]
@@ -40,12 +42,25 @@ def set_lib_file(libfile):
         operation.argtypes = [c_void_p, c_double]
         operation.restype = c_void_p
 
-    for operation in [lib.v_log, lib.v_exp, lib.v_abs]:
+    for operation in [lib.v_log, lib.v_exp, lib.v_abs, lib.m_sum_rows, lib.m_sum_cols]:
         operation.argtypes = [c_void_p]
         operation.restype = c_void_p
 
+    for operation in [lib.v_sum, lib.v_max, lib.v_min, lib.v_mean, lib.m_sum_all]:
+        operation.argtypes = [c_void_p]
+        operation.restype = c_double
+
+    set_number_of_threads(os.cpu_count() if threads is None else threads)
+
+
 def set_number_of_threads(threads):
     lib.set_number_of_threads(threads)
+
+
+def repeat(value, times):
+    ret = Vector()
+    ret.data = lib.repeat(value, times)
+    return ret
 
 
 def log(vec):
@@ -66,8 +81,20 @@ def abs(vec):
     return ret
 
 
-def sum(vec):
-    return lib.v_sum(vec.data)
+def sum(vec, axis=None):
+    return vec.sum() if axis is None else vec.sum(axis)
+
+
+def min(vec):
+    return vec.min()
+
+
+def max(vec):
+    return vec.max()
+
+
+def mean(vec, axis=None):
+    return vec.sum(axis) / len(vec)
 
 
 def dot(a, b):
@@ -88,9 +115,26 @@ class Matrix(object):
         values = (c_double * len(values)).from_buffer(array('d', values))
         self.data = lib.matrix(x, y, values, entries, size)
 
+    def get_rows(self):
+        ret = Vector()
+        ret.data = lib.get_rows(self.data)
+        return ret
+
+    def get_cols(self):
+        ret = Vector()
+        ret.data = lib.get_cols(self.data)
+        return ret
+
     def get_values(self):
         ret = Vector()
         ret.data = lib.get_values(self.data)
+        return ret
+
+    def sum(self, axis=None):
+        if axis is None:
+            return lib.m_sum_all(self.data)
+        ret = Vector()
+        ret.data = lib.m_sum_rows(self.data) if axis == 0 else lib.m_sum_cols(self.data)
         return ret
 
 
@@ -179,7 +223,6 @@ class Vector(object):
         return ret
 
     def __len__(self):
-        #print(lib.len(self.data))
         return lib.len(self.data)
 
     def __mul__(self, other):
@@ -200,6 +243,23 @@ class Vector(object):
 
     def __abs__(self):
         return abs(self)
+
+    def sum(self):
+        return lib.v_sum(self.data)
+
+    def mean(self):
+        return lib.v_mean(self.data)
+
+    def max(self):
+        return lib.v_max(self.data)
+
+    def min(self):
+        return lib.v_min(self.data)
+
+    def copy(self):
+        ret = Vector()
+        ret.data = lib.v_copy(self.data)
+        return ret
 
     def __str__(self):
         return "["+(", ".join(str(self[i]) for i in range(len(self))))+"]"

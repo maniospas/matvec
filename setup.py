@@ -5,6 +5,9 @@
 from setuptools import setup, Extension, find_packages
 from distutils.command.build_ext import build_ext as build_ext_orig
 
+with open("README.md", "r") as file:
+    long_description = file.read()
+
 
 class build_ext(build_ext_orig):
     def build_extension(self, ext):
@@ -24,13 +27,13 @@ class build_ext(build_ext_orig):
 
 setup(
     name='matvec',
-    version='0.0.1',
+    version='0.0.4',
     author="Emmanouil (Manios) Krasanakis",
     author_email="maniospas@hotmail.com",
-    description="Fast graph convolutional DSL",
-    long_description="Under development. Currently only for windows. Compared to scipy, it has slower allocation, but much faster execution",
+    description="Fast matrix transforms",
+    long_description=long_description,
     long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/maniospas/matvec",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
