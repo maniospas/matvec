@@ -37,6 +37,6 @@ print(x*A)
 ```
 
 # :fire: Features
-:rocket: Half or less scipy's time for matrix-vector multiplication.<br>
+:rocket: Half or less scipy's matrix-vector multiplication time.<br>
 :mag: TODO: numpy compatibility.<br>
 :factory: Common arithmetic operations.<br>

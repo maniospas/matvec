@@ -19,8 +19,11 @@ def load_matvec(libfile, threads=None):
     lib.get.argtypes = [c_void_p, sizetype]
     lib.get.restype = c_double
     lib.set.argtypes = [c_void_p, sizetype, c_double]
-    lib.len.argtypes = [c_void_p]
-    lib.len.restype = sizetype
+
+    for operation in lib.len, lib.m_len:
+        operation.argtypes = [c_void_p]
+        operation.restype = sizetype
+
     lib.dot.argtypes = [c_void_p, c_void_p]
     lib.dot.restype = c_double
     lib.assign.argtypes = [c_void_p, c_void_p]
@@ -34,7 +37,7 @@ def load_matvec(libfile, threads=None):
     lib.v_copy.argtypes = [c_void_p]
     lib.v_copy.restype = c_void_p
 
-    for operation in [lib.add, lib.sub, lib.v_mult, lib.v_pow, lib.v_div, lib.multiply]:
+    for operation in [lib.add, lib.sub, lib.v_mult, lib.v_pow, lib.v_div, lib.multiply, lib.rmultiply]:
         operation.argtypes = [c_void_p, c_void_p]
         operation.restype = c_void_p
 
@@ -42,7 +45,7 @@ def load_matvec(libfile, threads=None):
         operation.argtypes = [c_void_p, c_double]
         operation.restype = c_void_p
 
-    for operation in [lib.v_log, lib.v_exp, lib.v_abs, lib.m_sum_rows, lib.m_sum_cols]:
+    for operation in [lib.v_log, lib.v_exp, lib.v_abs, lib.m_sum_rows, lib.m_sum_cols, lib.transpose]:
         operation.argtypes = [c_void_p]
         operation.restype = c_void_p
 
@@ -110,10 +113,16 @@ def multiply(matrix, vec):
 class Matrix(object):
     def __init__(self, x, y, values, size):
         entries = len(values)
-        x = (sizetype * entries).from_buffer(array('q', x))
-        y = (sizetype * entries).from_buffer(array('q', y))
-        values = (c_double * len(values)).from_buffer(array('d', values))
-        self.data = lib.matrix(x, y, values, entries, size)
+        if entries > 0:
+            x = (sizetype * entries).from_buffer(array('q', x))
+            y = (sizetype * entries).from_buffer(array('q', y))
+            values = (c_double * len(values)).from_buffer(array('d', values))
+            self.data = lib.matrix(x, y, values, entries, size)
+
+    def transpose(self):
+        ret = Matrix([], [], [], 0)
+        ret.data = lib.transpose(self.data)
+        return ret
 
     def get_rows(self):
         ret = Vector()
@@ -136,6 +145,19 @@ class Matrix(object):
         ret = Vector()
         ret.data = lib.m_sum_rows(self.data) if axis == 0 else lib.m_sum_cols(self.data)
         return ret
+
+    def __mul__(self, other):
+        ret = Vector()
+        ret.data = lib.multiply(self.data, other.data)
+        return ret
+
+    def __rmul__(self, other):
+        ret = Vector()
+        ret.data = lib.rmultiply(other.data, self.data)
+        return ret
+
+    def __len__(self):
+        return lib.m_len(self.data)
 
 
 class Vector(object):
@@ -227,7 +249,9 @@ class Vector(object):
 
     def __mul__(self, other):
         ret = Vector()
-        if isinstance(other, float) or isinstance(other, int):
+        if isinstance(other, Matrix):
+            ret.data = lib.rmultiply(other.data, self.data)
+        elif isinstance(other, float) or isinstance(other, int):
             ret.data = lib.vc_mult(self.data, other)
         else:
             ret.data = lib.v_mult(self.data, other.data)
@@ -235,7 +259,9 @@ class Vector(object):
 
     def __rmul__(self, other):
         ret = Vector()
-        if isinstance(other, float) or isinstance(other, int):
+        if isinstance(other, Matrix):
+            ret.data = lib.multiply(other.data, self.data)
+        elif isinstance(other, float) or isinstance(other, int):
             ret.data = lib.vc_mult(self.data, other)
         else:
             ret.data = lib.v_mult(self.data, other.data)

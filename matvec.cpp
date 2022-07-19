@@ -37,20 +37,27 @@ class Matrix {
         sizetype entries;
         sizetype size;
 
-        Matrix(sizetype* _x, sizetype* _y, valuetype* _values, sizetype _entries, sizetype _size) {
-            sizetype* px = new sizetype[_entries];
-            sizetype* py = new sizetype[_entries];
-            valuetype* pv = new valuetype[_entries];
-            sizetype i;
-            #pragma omp parallel for shared(_entries, px, py, pv, _x, _y, _values) private(i)
-            for(i=0;i<_entries;i++) {
-                px[i] = _x[i];
-                py[i] = _y[i];
-                pv[i] = _values[i];
+        Matrix(sizetype* _x, sizetype* _y, valuetype* _values, sizetype _entries, sizetype _size, bool copy=true) {
+            if(copy) {
+                sizetype* px = new sizetype[_entries];
+                sizetype* py = new sizetype[_entries];
+                valuetype* pv = new valuetype[_entries];
+                sizetype i;
+                #pragma omp parallel for shared(_entries, px, py, pv, _x, _y, _values) private(i)
+                for(i=0;i<_entries;i++) {
+                    px[i] = _x[i];
+                    py[i] = _y[i];
+                    pv[i] = _values[i];
+                }
+                x = px;
+                y = py;
+                values = pv;
             }
-            x = px;
-            y = py;
-            values = pv;
+            else {
+                x = _x;
+                y = _y;
+                values = _values;
+            }
             entries = _entries;
             size = _size;
         }
@@ -75,6 +82,24 @@ extern "C" __declspec(dllexport) void* multiply(void* _matrix, void* _vector) {
     #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
     for(i=0;i<entries;i++)
         ret[x[i]] += mv[i]*vv[y[i]];
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" __declspec(dllexport) void* rmultiply(void* _matrix, void* _vector) {
+    Matrix* matrix = (Matrix*)_matrix;
+    Vector* vector = (Vector*)_vector;
+    sizetype size = vector->size;
+    sizetype* x = matrix->x;
+    sizetype* y = matrix->y;
+    valuetype* mv = matrix->values;
+    valuetype* vv = vector->values;
+    valuetype* ret = new valuetype[size]();
+    sizetype entries = matrix->entries;
+    sizetype i;
+    #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
+    for(i=0;i<entries;i++)
+        ret[y[i]] += mv[i]*vv[x[i]];
     return new Vector(ret, size, false);
 }
 
@@ -144,6 +169,11 @@ extern "C" __declspec(dllexport) void* v_log(void* _a) {
     for(i=0;i<size;i++)
         ret[i] = log(av[i]);
     return new Vector(ret, size, false);
+}
+
+extern "C" __declspec(dllexport) void* transpose(void* _a) {
+    Matrix* a = (Matrix*)_a;
+    return new Matrix(a->y, a->x, a->values, a->entries, a->size, false);
 }
 
 extern "C" __declspec(dllexport) valuetype v_sum(void* _a) {
@@ -410,6 +440,7 @@ extern "C" __declspec(dllexport) void* vector(valuetype* values, sizetype size) 
 extern "C" __declspec(dllexport) valuetype get(void* vector, sizetype i) {return ((Vector*)vector)->values[i];}
 extern "C" __declspec(dllexport) void set(void* vector, sizetype i, valuetype value){((Vector*)vector)->values[i] = value;}
 extern "C" __declspec(dllexport) sizetype len(void* vector){return ((Vector*)vector)->size;}
+extern "C" __declspec(dllexport) sizetype m_len(void* matrix){return ((Matrix*)matrix)->size;}
 
 extern "C" __declspec(dllexport) void* repeat(valuetype value, sizetype size) {
     valuetype* ret = new valuetype[size];
