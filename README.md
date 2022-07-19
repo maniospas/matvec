@@ -15,8 +15,8 @@ from matvec import Vector
 x = Vector([1, 2, 3, 4, 5])
 ```
 
-Creating a 5x5 sparse matrix *A* in coo-format 
-with non-zero elements *A[1,2]=9* and *A[3,0]=21*
+Creating a 5x5 sparse matrix A in coo-format 
+with non-zero elements A[1,2]=9 and A[3,0]=21
 ```python
 from matvec import Matrix
 A = Matrix([1, 2],
@@ -38,3 +38,5 @@ print(x*A)
 
 # :fire: Features
 :rocket: more than twice faster than scipy for matrix-vector multiplication
+:mag: TODO: numpy compatibility
+:factory: Common matrix and vector operations.
