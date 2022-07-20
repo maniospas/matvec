@@ -25,7 +25,7 @@ jobs:
 
       - name: Install packages
         run:
-          pip install bdist_wheel
+          pip install wheel
           pip install numpy
 
       - name: Build wheels
