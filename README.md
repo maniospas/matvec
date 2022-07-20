@@ -38,7 +38,7 @@ print(x*A)
 
 # :fire: Features
 :rocket: Parallelized matrix-vector multiplication.<br>
-:chart_with_downwards_trend: Memory reuse optimization.
+:chart_with_downwards_trend: Memory reuse optimization.<br>
 :mag: numpy compatibility.<br>
 :factory: Common arithmetic operations.<br>
 

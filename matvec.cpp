@@ -66,6 +66,8 @@ class Matrix {
         valuetype* values;
         sizetype entries;
         sizetype size;
+        //std::unordered_map<sizetype, std::vector<sizetype>*> row_indexes;
+        //std::unordered_map<sizetype, std::vector<sizetype>*> col_indexes;
 
         Matrix(sizetype* _x, sizetype* _y, valuetype* _values, sizetype _entries, sizetype _size, bool copy=true) {
             if(copy) {
@@ -90,6 +92,13 @@ class Matrix {
             }
             entries = _entries;
             size = _size;
+            /*sizetype i;
+            //#pragma omp parallel for shared(_entries, px, py, pv, _x, _y, _values) private(i)
+            for(i=0;i<_entries;i++) {
+                if(row_indexes.find(_x[i]) != row_indexes.end())
+                    row_indexes[_x[i]] = new std::vector<sizetype>();
+                row_indexes[_x[i]]->push_back(i);
+            }*/
         }
         ~Matrix() {
             delete x;
@@ -113,8 +122,23 @@ extern "C" __declspec(dllexport) void* multiply(void* _matrix, void* _vector) {
         ret[i] = 0;
     sizetype entries = matrix->entries;
     #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
-    for(i=0;i<entries;i++)
-        ret[x[i]] += mv[i]*vv[y[i]];
+    for(i=0;i<entries;i++) {
+        valuetype val = mv[i]*vv[y[i]];
+        #pragma omp atomic
+        ret[x[i]] += val;
+    }
+    /*
+    sizetype row;
+    #pragma omp parallel for shared(entries, ret, x, y, mv, vv, matrix) private(row)
+    for(row=0;row<size;row++) {
+        std::vector<sizetype>* adjacent = matrix->row_indexes[row];
+        std::cout<<row<" row\n";
+        for(int j=0;j<adjacent->size();i++) {
+            i = adjacent->at(j);
+            ret[row] += mv[i]*vv[y[i]];
+        }
+    }*/
+
     return new Vector(ret, size, false);
 }
 
