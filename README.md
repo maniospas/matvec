@@ -43,9 +43,12 @@ print(x*A)
 :factory: Common arithmetic operations.<br>
 
 # :volcano: Benchmark
+Current benchmark values are exhibited only on *one machine*.
+More rigorous evaluation will take place in the future.
+
 | Task                                   | numpy/scipy | matvec    |
 |----------------------------------------|-------------|-----------|
 | Allocate vectors with 2E6 elements     | 0.101 sec   | 0.106 sec |
 | 1000 temp. additions with 2E6 elements | 4.067 sec   | 2.265 sec |
-| Allocate matrix with 2E6 non-zeros     | 0.194 sec   | 0.066 sec |
-| Sparse matrix with vec multiplication  | 0.025 sec   | 0.009 sec |
+| Allocate matrix with 2E6 non-zeros     | 0.231 sec   | 0.073 sec |
+| Sparse matrix with vec multiplication  | 0.024 sec   | 0.012 sec |
