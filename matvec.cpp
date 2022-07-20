@@ -1,5 +1,5 @@
 //#define DLL_EXPORT __declspec(dllimport) extern "C"
-#define sizetype long long int
+#define sizetype long long
 #define valuetype double
 #include <iostream>
 #include <math.h>
@@ -104,6 +104,7 @@ class Matrix {
             delete x;
             delete y;
             delete values;
+            delete values;
         }
 };
 
@@ -163,6 +164,29 @@ extern "C" __declspec(dllexport) void* rmultiply(void* _matrix, void* _vector) {
     return new Vector(ret, size, false);
 }
 
+
+extern "C" __declspec(dllexport) void* mask(void* _a, void* _b) {
+    Vector* a = (Vector*)_a;
+    Vector* b = (Vector*)_b;
+    valuetype* av = a->values;
+    valuetype* bv = b->values;
+    sizetype size = a->size;
+    sizetype i;
+    sizetype nonzeroes = 0;
+    #pragma omp parallel for shared(size, av, bv) private(i) reduction(+:nonzeroes)
+    for(i=0;i<size;i++)
+        if(bv[i])
+            nonzeroes += 1;
+    valuetype* ret = allocate_values(nonzeroes);
+    sizetype j = 0;
+    for(i=0;i<size;i++)
+        if(bv[i]) {
+            ret[j] = av[i];
+            j++;
+        }
+    return new Vector(ret, nonzeroes, false);
+}
+
 extern "C" __declspec(dllexport) void* add(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
@@ -174,6 +198,49 @@ extern "C" __declspec(dllexport) void* add(void* _a, void* _b) {
     #pragma omp parallel for shared(size, ret, av, bv) private(i)
     for(i=0;i<size;i++)
         ret[i] = av[i] + bv[i];
+    return new Vector(ret, size, false);
+}
+
+extern "C" __declspec(dllexport) void* equals(void* _a, void* _b) {
+    Vector* a = (Vector*)_a;
+    Vector* b = (Vector*)_b;
+    valuetype* av = a->values;
+    valuetype* bv = b->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av, bv) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] == bv[i];
+    return new Vector(ret, size, false);
+}
+
+extern "C" __declspec(dllexport) void* greater(void* _a, void* _b) {
+    Vector* a = (Vector*)_a;
+    Vector* b = (Vector*)_b;
+    valuetype* av = a->values;
+    valuetype* bv = b->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av, bv) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] > bv[i];
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" __declspec(dllexport) void* greater_eq(void* _a, void* _b) {
+    Vector* a = (Vector*)_a;
+    Vector* b = (Vector*)_b;
+    valuetype* av = a->values;
+    valuetype* bv = b->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av, bv) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] >= bv[i];
     return new Vector(ret, size, false);
 }
 
@@ -410,6 +477,71 @@ extern "C" __declspec(dllexport) void* vc_add(void* _a, valuetype b) {
     return new Vector(ret, size, false);
 }
 
+extern "C" __declspec(dllexport) void* vc_equals(void* _a, valuetype b) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] == b;
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" __declspec(dllexport) void* vc_greater(void* _a, valuetype b) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] > b;
+    return new Vector(ret, size, false);
+}
+
+extern "C" __declspec(dllexport) void* vc_greater_eq(void* _a, valuetype b) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] >= b;
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" __declspec(dllexport) void* vc_less(void* _a, valuetype b) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] < b;
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" __declspec(dllexport) void* vc_less_eq(void* _a, valuetype b) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype* ret = allocate_values(size);
+    sizetype i;
+    #pragma omp parallel for shared(size, ret, av) private(i)
+    for(i=0;i<size;i++)
+        ret[i] = av[i] <= b;
+    return new Vector(ret, size, false);
+}
+
+
+
 extern "C" __declspec(dllexport) void* vc_sub(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
@@ -635,4 +767,14 @@ int groupsize;
 extern "C" __declspec(dllexport) void set_number_of_threads(int threads) {
     omp_set_dynamic(0);
     omp_set_num_threads(threads);
+}
+
+extern "C" __declspec(dllexport) PyObject * v_to_array(void* _vector) {
+    Vector* vector = (Vector*)_vector;
+    for(sizetype i=0;i<vector->size;i++){
+        //PyLong_FromLongLong(vector->values[i]);
+        //PyFloat_FromDouble(vector->values[i]);
+        //PyObject_SetItem(fill, Py_BuildValue("L", i), Py_BuildValue("d", vector->values[i]));
+    }
+    return NULL;
 }

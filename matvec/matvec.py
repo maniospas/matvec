@@ -1,6 +1,5 @@
 import ctypes
 from ctypes import *
-from array import array
 import os
 import numpy as np
 
@@ -18,6 +17,8 @@ def load_matvec(matvec_libfile, threads=None):
     matvec_lib.matrix.argtypes = [ctypes.py_object, ctypes.py_object, ctypes.py_object, sizetype, sizetype]
     matvec_lib.free_matrix.argtypes = [c_void_p]
     matvec_lib.free_vector.argtypes = [c_void_p]
+    matvec_lib.v_to_array.argtypes = [c_void_p]
+    matvec_lib.v_to_array.restype = ctypes.py_object
 
     matvec_lib.get.argtypes = [c_void_p, sizetype]
     matvec_lib.get.restype = c_double
@@ -40,11 +41,19 @@ def load_matvec(matvec_libfile, threads=None):
     matvec_lib.v_copy.argtypes = [c_void_p]
     matvec_lib.v_copy.restype = c_void_p
 
-    for operation in [matvec_lib.add, matvec_lib.sub, matvec_lib.v_mult, matvec_lib.v_pow, matvec_lib.v_div, matvec_lib.multiply, matvec_lib.rmultiply]:
+    for operation in [matvec_lib.add, matvec_lib.sub, matvec_lib.v_mult,
+                      matvec_lib.v_pow, matvec_lib.v_div, matvec_lib.mask,
+                      matvec_lib.equals, matvec_lib.greater, matvec_lib.greater_eq,
+                      matvec_lib.multiply, matvec_lib.rmultiply]:
         operation.argtypes = [c_void_p, c_void_p]
         operation.restype = c_void_p
 
-    for operation in [matvec_lib.vc_add, matvec_lib.vc_sub, matvec_lib.cv_sub, matvec_lib.vc_mult, matvec_lib.vc_pow, matvec_lib.cv_pow, matvec_lib.vc_div, matvec_lib.cv_div]:
+    for operation in [matvec_lib.vc_add, matvec_lib.vc_sub,
+                      matvec_lib.cv_sub, matvec_lib.vc_mult,
+                      matvec_lib.vc_pow, matvec_lib.cv_pow,
+                      matvec_lib.vc_div, matvec_lib.cv_div,
+                      matvec_lib.vc_equals, matvec_lib.vc_greater, matvec_lib.vc_less,
+                      matvec_lib.vc_greater_eq, matvec_lib.vc_less_eq]:
         operation.argtypes = [c_void_p, c_double]
         operation.restype = c_void_p
 
@@ -110,7 +119,7 @@ def max(vec):
 
 
 def mean(vec, axis=None):
-    return vec.sum(axis) / len(vec)
+    return vec.mean(axis)
 
 
 def dot(a, b):
@@ -185,13 +194,20 @@ class Vector(object):
     def assign(self, other):
         matvec_lib.assign(self.data, to_vector(other).data)
 
-    def __array__ (self):
-        return self.np()  # compatibility with numpy conversion
+    def __array__ (self):  # compatibility with numpy conversion
+        populate = np.empty(matvec_lib.len(self.data))
+        #for i in range(len(self)):
+        #    populate[i] = matvec_lib.get(self.data, i)
+        return populate
 
     def np(self):
-        return np.array([self[i] for i in range(len(self))])
+        return np.array(self.__array__(), copy=False)
 
     def __getitem__(self, i):
+        if isinstance(i, Vector):
+            ret = Vector()
+            ret.data = matvec_lib.mask(self.data, i.data)
+            return ret
         return matvec_lib.get(self.data, i)
 
     def __setitem__(self, i, value):
@@ -203,6 +219,47 @@ class Vector(object):
             ret.data = matvec_lib.vc_add(self.data, other)
         else:
             ret.data = matvec_lib.add(self.data, to_vector(other).data)
+        return ret
+
+    def __eq__(self, other):
+        ret = Vector()
+        if isinstance(other, float) or isinstance(other, int):
+            ret.data = matvec_lib.vc_equals(self.data, other)
+        else:
+            ret.data = matvec_lib.equals(self.data, other.data)
+        return ret
+
+    def __lt__(self, other):
+        ret = Vector()
+        if isinstance(other, float) or isinstance(other, int):
+            ret.data = matvec_lib.vc_less(self.data, other)
+        else:
+            ret.data = matvec_lib.greater(other.data, self.data)
+        return ret
+
+    def __gt__(self, other):
+        ret = Vector()
+        if isinstance(other, float) or isinstance(other, int):
+            ret.data = matvec_lib.vc_greater(self.data, other)
+        else:
+            ret.data = matvec_lib.greater(self.data, other.data)
+        return ret
+
+
+    def __le__(self, other):
+        ret = Vector()
+        if isinstance(other, float) or isinstance(other, int):
+            ret.data = matvec_lib.vc_less_eq(self.data, other)
+        else:
+            ret.data = matvec_lib.greater_eq(other.data, self.data)
+        return ret
+
+    def __ge__(self, other):
+        ret = Vector()
+        if isinstance(other, float) or isinstance(other, int):
+            ret.data = matvec_lib.vc_greater_eq(self.data, other)
+        else:
+            ret.data = matvec_lib.greater_eq(self.data, other.data)
         return ret
 
     def __neg__(self):
