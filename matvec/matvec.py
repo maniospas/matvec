@@ -63,6 +63,12 @@ def clear():
     matvec_lib.clear()
 
 
+def to_vector(x):
+    if isinstance(x, Vector):
+        return x
+    return Vector(x)
+
+
 def set_number_of_threads(threads):
     matvec_lib.set_number_of_threads(threads)
 
@@ -155,12 +161,12 @@ class Matrix(object):
 
     def __mul__(self, other):
         ret = Vector()
-        ret.data = matvec_lib.multiply(self.data, other.data)
+        ret.data = matvec_lib.multiply(self.data, to_vector(other).data)
         return ret
 
     def __rmul__(self, other):
         ret = Vector()
-        ret.data = matvec_lib.rmultiply(other.data, self.data)
+        ret.data = matvec_lib.rmultiply(to_vector(other).data, self.data)
         return ret
 
     def __len__(self):
@@ -177,7 +183,13 @@ class Vector(object):
             self.data = matvec_lib.vector(x, x.shape[0])
 
     def assign(self, other):
-        matvec_lib.assign(self.data, other.data)
+        matvec_lib.assign(self.data, to_vector(other).data)
+
+    def __array__ (self):
+        return self.np()  # compatibility with numpy conversion
+
+    def np(self):
+        return np.array([self[i] for i in range(len(self))])
 
     def __getitem__(self, i):
         return matvec_lib.get(self.data, i)
@@ -190,7 +202,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_add(self.data, other)
         else:
-            ret.data = matvec_lib.add(self.data, other.data)
+            ret.data = matvec_lib.add(self.data, to_vector(other).data)
         return ret
 
     def __neg__(self):
@@ -203,7 +215,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_add(self.data, other)
         else:
-            ret.data = matvec_lib.add(self.data, other.data)
+            ret.data = matvec_lib.add(self.data, to_vector(other).data)
         return ret
 
     def __sub__(self, other):
@@ -211,7 +223,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_sub(self.data, other)
         else:
-            ret.data = matvec_lib.sub(self.data, other.data)
+            ret.data = matvec_lib.sub(self.data, to_vector(other).data)
         return ret
 
     def __rsub__(self, other):
@@ -219,7 +231,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.cv_sub(self.data, other)
         else:
-            ret.data = matvec_lib.sub(other.data, self.data)
+            ret.data = matvec_lib.sub(to_vector(other).data, self.data)
         return ret
 
     def __truediv__(self, other):
@@ -227,7 +239,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_div(self.data, other)
         else:
-            ret.data = matvec_lib.v_div(self.data, other.data)
+            ret.data = matvec_lib.v_div(self.data, to_vector(other).data)
         return ret
 
     def __rtruediv__(self, other):
@@ -235,7 +247,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.cv_div(self.data, other)
         else:
-            ret.data = matvec_lib.v_div(other.data, self.data)
+            ret.data = matvec_lib.v_div(to_vector(other).data, self.data)
         return ret
 
     def __pow__(self, other):
@@ -243,7 +255,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_pow(self.data, other)
         else:
-            ret.data = matvec_lib.v_pow(self.data, other.data)
+            ret.data = matvec_lib.v_pow(self.data, to_vector(other).data)
         return ret
 
     def __rpow__(self, other):
@@ -251,7 +263,7 @@ class Vector(object):
         if isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.cv_pow(self.data, other)
         else:
-            ret.data = matvec_lib.v_pow(other.data, self.data)
+            ret.data = matvec_lib.v_pow(to_vector(other).data, self.data)
         return ret
 
     def __len__(self):
@@ -264,7 +276,7 @@ class Vector(object):
         elif isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_mult(self.data, other)
         else:
-            ret.data = matvec_lib.v_mult(self.data, other.data)
+            ret.data = matvec_lib.v_mult(self.data, to_vector(other).data)
         return ret
 
     def __rmul__(self, other):
@@ -274,7 +286,7 @@ class Vector(object):
         elif isinstance(other, float) or isinstance(other, int):
             ret.data = matvec_lib.vc_mult(self.data, other)
         else:
-            ret.data = matvec_lib.v_mult(self.data, other.data)
+            ret.data = matvec_lib.v_mult(self.data, to_vector(other).data)
         return ret
 
     def __abs__(self):
