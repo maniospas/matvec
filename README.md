@@ -37,6 +37,15 @@ print(x*A)
 ```
 
 # :fire: Features
-:rocket: Half or less scipy's matrix-vector multiplication time.<br>
-:mag: TODO: numpy compatibility.<br>
+:rocket: Parallelized matrix-vector multiplication.<br>
+:chart_with_downwards_trend: Memory reuse optimization.
+:mag: numpy compatibility.<br>
 :factory: Common arithmetic operations.<br>
+
+# :volcano: Benchmark
+| Task                                   | numpy/scipy | matvec    |
+|----------------------------------------|-------------|-----------|
+| Allocate vectors with 2E6 elements     | 0.101 sec   | 0.106 sec |
+| 1000 temp. additions with 2E6 elements | 4.067 sec   | 2.265 sec |
+| Allocate matrix with 2E6 non-zeros     | 0.194 sec   | 0.066 sec |
+| Sparse vec multiplication              | 0.025 sec   | 0.009 sec |
