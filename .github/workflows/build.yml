@@ -33,11 +33,15 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          path: ./dist/*.whl
+          name: wheels
+          path: dist/*.whl
 
   deploy_wheels:
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
