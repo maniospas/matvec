@@ -9,6 +9,20 @@
 #include <map>
 #include<unordered_map>
 
+#if defined(_MSC_VER)
+    //  Microsoft
+    #define EXPORT __declspec(dllexport)
+#elif defined(__GNUC__)
+    //  GCC
+    #define EXPORT __attribute__((visibility("default")))
+    #define IMPORT
+#else
+    //  do nothing and hope for the best?
+    #define EXPORT
+    #define IMPORT
+    #pragma warning Unknown dynamic link import/export semantics.
+#endif
+
 // TODO: integrate https://github.com/taoito/matvec-mpi
 
 std::unordered_map<sizetype, std::vector<valuetype*>*> reusable;
@@ -108,7 +122,7 @@ class Matrix {
         }
 };
 
-extern "C" __declspec(dllexport) void* multiply(void* _matrix, void* _vector) {
+extern "C" EXPORT void* multiply(void* _matrix, void* _vector) {
     Matrix* matrix = (Matrix*)_matrix;
     Vector* vector = (Vector*)_vector;
     sizetype size = vector->size;
@@ -144,7 +158,7 @@ extern "C" __declspec(dllexport) void* multiply(void* _matrix, void* _vector) {
 }
 
 
-extern "C" __declspec(dllexport) void* rmultiply(void* _matrix, void* _vector) {
+extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
     Matrix* matrix = (Matrix*)_matrix;
     Vector* vector = (Vector*)_vector;
     sizetype size = vector->size;
@@ -165,7 +179,7 @@ extern "C" __declspec(dllexport) void* rmultiply(void* _matrix, void* _vector) {
 }
 
 
-extern "C" __declspec(dllexport) void* mask(void* _a, void* _b) {
+extern "C" EXPORT void* mask(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -187,7 +201,7 @@ extern "C" __declspec(dllexport) void* mask(void* _a, void* _b) {
     return new Vector(ret, nonzeroes, false);
 }
 
-extern "C" __declspec(dllexport) void* add(void* _a, void* _b) {
+extern "C" EXPORT void* add(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -201,7 +215,7 @@ extern "C" __declspec(dllexport) void* add(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* equals(void* _a, void* _b) {
+extern "C" EXPORT void* equals(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -215,7 +229,7 @@ extern "C" __declspec(dllexport) void* equals(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* greater(void* _a, void* _b) {
+extern "C" EXPORT void* greater(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -230,7 +244,7 @@ extern "C" __declspec(dllexport) void* greater(void* _a, void* _b) {
 }
 
 
-extern "C" __declspec(dllexport) void* greater_eq(void* _a, void* _b) {
+extern "C" EXPORT void* greater_eq(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -244,7 +258,7 @@ extern "C" __declspec(dllexport) void* greater_eq(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* sub(void* _a, void* _b) {
+extern "C" EXPORT void* sub(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -258,7 +272,7 @@ extern "C" __declspec(dllexport) void* sub(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* v_div(void* _a, void* _b) {
+extern "C" EXPORT void* v_div(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -272,7 +286,7 @@ extern "C" __declspec(dllexport) void* v_div(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* v_pow(void* _a, void* _b) {
+extern "C" EXPORT void* v_pow(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -286,7 +300,7 @@ extern "C" __declspec(dllexport) void* v_pow(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* v_log(void* _a) {
+extern "C" EXPORT void* v_log(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -298,12 +312,12 @@ extern "C" __declspec(dllexport) void* v_log(void* _a) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* transpose(void* _a) {
+extern "C" EXPORT void* transpose(void* _a) {
     Matrix* a = (Matrix*)_a;
     return new Matrix(a->y, a->x, a->values, a->entries, a->size, true);//TODO: keep count of uses before deleting
 }
 
-extern "C" __declspec(dllexport) valuetype v_sum(void* _a) {
+extern "C" EXPORT valuetype v_sum(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -316,7 +330,7 @@ extern "C" __declspec(dllexport) valuetype v_sum(void* _a) {
 }
 
 
-extern "C" __declspec(dllexport) valuetype v_max(void* _a) {
+extern "C" EXPORT valuetype v_max(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -328,7 +342,7 @@ extern "C" __declspec(dllexport) valuetype v_max(void* _a) {
     return ret;
 }
 
-extern "C" __declspec(dllexport) valuetype v_min(void* _a) {
+extern "C" EXPORT valuetype v_min(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -340,7 +354,7 @@ extern "C" __declspec(dllexport) valuetype v_min(void* _a) {
     return ret;
 }
 
-extern "C" __declspec(dllexport) valuetype m_sum_all(void* _a) {
+extern "C" EXPORT valuetype m_sum_all(void* _a) {
     Matrix* a = (Matrix*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -352,7 +366,7 @@ extern "C" __declspec(dllexport) valuetype m_sum_all(void* _a) {
     return ret;
 }
 
-extern "C" __declspec(dllexport) void* m_sum_rows(void* _a) {
+extern "C" EXPORT void* m_sum_rows(void* _a) {
     Matrix* a = (Matrix*)_a;
     sizetype* ax = a->x;
     valuetype* av = a->values;
@@ -369,7 +383,7 @@ extern "C" __declspec(dllexport) void* m_sum_rows(void* _a) {
 }
 
 
-extern "C" __declspec(dllexport) void* m_sum_cols(void* _a) {
+extern "C" EXPORT void* m_sum_cols(void* _a) {
     Matrix* a = (Matrix*)_a;
     sizetype* ay = a->y;
     valuetype* av = a->values;
@@ -385,7 +399,7 @@ extern "C" __declspec(dllexport) void* m_sum_cols(void* _a) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) valuetype v_mean(void* _a) {
+extern "C" EXPORT valuetype v_mean(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -399,7 +413,7 @@ extern "C" __declspec(dllexport) valuetype v_mean(void* _a) {
     return ret;
 }
 
-extern "C" __declspec(dllexport) valuetype dot(void* _a, void* _b) {
+extern "C" EXPORT valuetype dot(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -413,7 +427,7 @@ extern "C" __declspec(dllexport) valuetype dot(void* _a, void* _b) {
     return ret;
 }
 
-extern "C" __declspec(dllexport) void* v_abs(void* _a) {
+extern "C" EXPORT void* v_abs(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -427,7 +441,7 @@ extern "C" __declspec(dllexport) void* v_abs(void* _a) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* v_exp(void* _a) {
+extern "C" EXPORT void* v_exp(void* _a) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -439,7 +453,7 @@ extern "C" __declspec(dllexport) void* v_exp(void* _a) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void assign(void* _a, void* _b) {
+extern "C" EXPORT void assign(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -451,7 +465,7 @@ extern "C" __declspec(dllexport) void assign(void* _a, void* _b) {
         av[i] = bv[i];
 }
 
-extern "C" __declspec(dllexport) void* v_mult(void* _a, void* _b) {
+extern "C" EXPORT void* v_mult(void* _a, void* _b) {
     Vector* a = (Vector*)_a;
     Vector* b = (Vector*)_b;
     valuetype* av = a->values;
@@ -465,7 +479,7 @@ extern "C" __declspec(dllexport) void* v_mult(void* _a, void* _b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* vc_add(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_add(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -477,7 +491,7 @@ extern "C" __declspec(dllexport) void* vc_add(void* _a, valuetype b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* vc_equals(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_equals(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -490,7 +504,7 @@ extern "C" __declspec(dllexport) void* vc_equals(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* vc_greater(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_greater(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -502,7 +516,7 @@ extern "C" __declspec(dllexport) void* vc_greater(void* _a, valuetype b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* vc_greater_eq(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_greater_eq(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -515,7 +529,7 @@ extern "C" __declspec(dllexport) void* vc_greater_eq(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* vc_less(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_less(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -528,7 +542,7 @@ extern "C" __declspec(dllexport) void* vc_less(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* vc_less_eq(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_less_eq(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -542,7 +556,7 @@ extern "C" __declspec(dllexport) void* vc_less_eq(void* _a, valuetype b) {
 
 
 
-extern "C" __declspec(dllexport) void* vc_sub(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_sub(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -555,7 +569,7 @@ extern "C" __declspec(dllexport) void* vc_sub(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* cv_sub(void* _a, valuetype b) {
+extern "C" EXPORT void* cv_sub(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -568,7 +582,7 @@ extern "C" __declspec(dllexport) void* cv_sub(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* vc_div(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_div(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -581,7 +595,7 @@ extern "C" __declspec(dllexport) void* vc_div(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* cv_div(void* _a, valuetype b) {
+extern "C" EXPORT void* cv_div(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -594,7 +608,7 @@ extern "C" __declspec(dllexport) void* cv_div(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* vc_pow(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_pow(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -607,7 +621,7 @@ extern "C" __declspec(dllexport) void* vc_pow(void* _a, valuetype b) {
 }
 
 
-extern "C" __declspec(dllexport) void* cv_pow(void* _a, valuetype b) {
+extern "C" EXPORT void* cv_pow(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -619,7 +633,7 @@ extern "C" __declspec(dllexport) void* cv_pow(void* _a, valuetype b) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* vc_mult(void* _a, valuetype b) {
+extern "C" EXPORT void* vc_mult(void* _a, valuetype b) {
     Vector* a = (Vector*)_a;
     valuetype* av = a->values;
     sizetype size = a->size;
@@ -633,7 +647,7 @@ extern "C" __declspec(dllexport) void* vc_mult(void* _a, valuetype b) {
 
 
 
-extern "C" __declspec(dllexport) void* matrix(PyObject* x, PyObject* y, PyObject* values, sizetype entries, sizetype size){
+extern "C" EXPORT void* matrix(PyObject* x, PyObject* y, PyObject* values, sizetype entries, sizetype size){
     Py_buffer view_x, view_y, view_v;
     if (PyObject_GetBuffer(x, &view_x, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1)
         return NULL;
@@ -675,21 +689,21 @@ extern "C" __declspec(dllexport) void* matrix(PyObject* x, PyObject* y, PyObject
     return mat;
 }
 
-//extern "C" __declspec(dllexport) void* vector(valuetype* values, sizetype size) {return new Vector(values, size);}
-extern "C" __declspec(dllexport) valuetype get(void* vector, sizetype i) {return ((Vector*)vector)->values[i];}
-extern "C" __declspec(dllexport) void set(void* vector, sizetype i, valuetype value){((Vector*)vector)->values[i] = value;}
-extern "C" __declspec(dllexport) sizetype len(void* vector){return ((Vector*)vector)->size;}
-extern "C" __declspec(dllexport) sizetype m_len(void* matrix){return ((Matrix*)matrix)->size;}
+//extern "C" EXPORT void* vector(valuetype* values, sizetype size) {return new Vector(values, size);}
+extern "C" EXPORT valuetype get(void* vector, sizetype i) {return ((Vector*)vector)->values[i];}
+extern "C" EXPORT void set(void* vector, sizetype i, valuetype value){((Vector*)vector)->values[i] = value;}
+extern "C" EXPORT sizetype len(void* vector){return ((Vector*)vector)->size;}
+extern "C" EXPORT sizetype m_len(void* matrix){return ((Matrix*)matrix)->size;}
 
-extern "C" __declspec(dllexport) void free_vector(void* obj) {
+extern "C" EXPORT void free_vector(void* obj) {
     delete (Vector*)obj;
 }
 
-extern "C" __declspec(dllexport) void free_matrix(void* obj) {
+extern "C" EXPORT void free_matrix(void* obj) {
     delete (Matrix*)obj;
 }
 
-extern "C" __declspec(dllexport) void clear() {
+extern "C" EXPORT void clear() {
     for (std::unordered_map<sizetype, std::vector<valuetype*>*>::iterator it = reusable.begin(); it != reusable.end(); it++) {
         for(int i=0;i <it->second->size();i++)
             delete it->second->at(i);
@@ -698,7 +712,7 @@ extern "C" __declspec(dllexport) void clear() {
     reusable.clear();
 }
 
-extern "C" __declspec(dllexport) void* vector(PyObject *values, sizetype size) {
+extern "C" EXPORT void* vector(PyObject *values, sizetype size) {
     Py_buffer* view = new Py_buffer();
     if (PyObject_GetBuffer(values, view, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1)
         return NULL;
@@ -719,7 +733,7 @@ extern "C" __declspec(dllexport) void* vector(PyObject *values, sizetype size) {
 }
 
 
-extern "C" __declspec(dllexport) void* repeat(valuetype value, sizetype size) {
+extern "C" EXPORT void* repeat(valuetype value, sizetype size) {
     valuetype* ret = allocate_values(size);
     sizetype i;
     #pragma omp parallel for shared(size, ret) private(i)
@@ -728,17 +742,17 @@ extern "C" __declspec(dllexport) void* repeat(valuetype value, sizetype size) {
     return new Vector(ret, size, false);
 }
 
-extern "C" __declspec(dllexport) void* v_copy(void* _vector) {
+extern "C" EXPORT void* v_copy(void* _vector) {
     Vector* vector = (Vector*)_vector;
     return new Vector(vector->values, vector->size);
 }
 
-extern "C" __declspec(dllexport) void* get_values(void* _matrix) {
+extern "C" EXPORT void* get_values(void* _matrix) {
     Matrix* matrix = (Matrix*)_matrix;
     return new Vector(matrix->values, matrix->entries, false);
 }
 
-extern "C" __declspec(dllexport) void* get_rows(void* _matrix) {
+extern "C" EXPORT void* get_rows(void* _matrix) {
     Matrix* matrix = (Matrix*)_matrix;
     sizetype entries = matrix->entries;
     sizetype i;
@@ -750,7 +764,7 @@ extern "C" __declspec(dllexport) void* get_rows(void* _matrix) {
     return new Vector(ret, entries, false);
 }
 
-extern "C" __declspec(dllexport) void* get_cols(void* _matrix) {
+extern "C" EXPORT void* get_cols(void* _matrix) {
     Matrix* matrix = (Matrix*)_matrix;
     sizetype entries = matrix->entries;
     sizetype i;
@@ -764,12 +778,12 @@ extern "C" __declspec(dllexport) void* get_cols(void* _matrix) {
 
 int myrank;
 int groupsize;
-extern "C" __declspec(dllexport) void set_number_of_threads(int threads) {
+extern "C" EXPORT void set_number_of_threads(int threads) {
     omp_set_dynamic(0);
     omp_set_num_threads(threads);
 }
 
-extern "C" __declspec(dllexport) PyObject * v_to_array(void* _vector) {
+extern "C" EXPORT PyObject * v_to_array(void* _vector) {
     Vector* vector = (Vector*)_vector;
     for(sizetype i=0;i<vector->size;i++){
         //PyLong_FromLongLong(vector->values[i]);

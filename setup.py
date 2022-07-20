@@ -47,7 +47,7 @@ setup(
         Extension(
             "matvec/matvec.py",
             ["matvec.cpp"],
-              extra_compile_args=['-openmp'],
+              extra_compile_args=['-openmp', '-fopenmp'],
               extra_link_args=[],
         ),
     ],
