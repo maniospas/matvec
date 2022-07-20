@@ -75,13 +75,13 @@ def repeat(value, times):
 
 def log(vec):
     ret = Vector()
-    ret.data = matvec_lib.log(vec.data)
+    ret.data = matvec_lib.v_log(vec.data)
     return ret
 
 
 def exp(vec):
     ret = Vector()
-    ret.data = matvec_lib.exp(vec.data)
+    ret.data = matvec_lib.v_exp(vec.data)
     return ret
 
 

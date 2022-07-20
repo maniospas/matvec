@@ -6,7 +6,7 @@ n-dimensional column vectors, and n-by-n sparse matrices.
 
 **License:** Apache Software License
 <br>**Author:** Emmanouil (Manios) Krasanakis
-<br>**Dependncies:** ---
+<br>**Dependncies:** *numpy*
 
 # :zap: Quickstart
 Creating a 5-dimensional vector:

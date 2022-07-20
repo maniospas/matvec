@@ -27,7 +27,7 @@ class build_ext(build_ext_orig):
 
 setup(
     name='matvec',
-    version='0.0.6',
+    version='0.0.8',
     author="Emmanouil (Manios) Krasanakis",
     author_email="maniospas@hotmail.com",
     description="Fast matrix transforms",
@@ -40,7 +40,7 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    install_requires=[
+    install_requires=["numpy"
     ],
     py_modules=["matvec"],
     ext_modules=[
