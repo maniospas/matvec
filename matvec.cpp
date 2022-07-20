@@ -9,6 +9,8 @@
 #include <map>
 #include<unordered_map>
 
+// TODO: integrate https://github.com/taoito/matvec-mpi
+
 std::unordered_map<sizetype, std::vector<valuetype*>*> reusable;
 
 valuetype* allocate_values(sizetype size) {
