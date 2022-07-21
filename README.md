@@ -43,7 +43,9 @@ print(x*A)
 :factory: Common arithmetic operations.<br>
 
 # :volcano: Benchmark
-Current benchmark values are exhibited only on *one machine*.
+Experiments run on a machine witj 2.6 GHz CPU base clock,
+up to 4.4 GHz turbo boost of that clock, 12 logical
+cores, and 16GB DDR3 RAM.
 More rigorous evaluation will take place in the future.
 
 | Task                                   | numpy/scipy | matvec    |
@@ -52,3 +54,5 @@ More rigorous evaluation will take place in the future.
 | 1000 temp. additions with 2E6 elements | 4.067 sec   | 2.265 sec |
 | Allocate matrix with 2E6 non-zeros     | 0.231 sec   | 0.073 sec |
 | Sparse matrix with vec multiplication  | 0.024 sec   | 0.012 sec |
+
+![benchmarks](benchmarks.png)

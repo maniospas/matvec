@@ -118,7 +118,6 @@ class Matrix {
             delete x;
             delete y;
             delete values;
-            delete values;
         }
 };
 
