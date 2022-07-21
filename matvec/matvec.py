@@ -61,7 +61,7 @@ def load_matvec(matvec_libfile, threads=None):
         operation.argtypes = [c_void_p]
         operation.restype = c_void_p
 
-    for operation in [matvec_lib.v_sum, matvec_lib.v_max, matvec_lib.v_min, matvec_lib.v_mean, matvec_lib.m_sum_all]:
+    for operation in [matvec_lib.v_sum, matvec_lib.v_norm,matvec_lib.v_max, matvec_lib.v_min, matvec_lib.v_mean, matvec_lib.m_sum_all]:
         operation.argtypes = [c_void_p]
         operation.restype = c_double
 
@@ -108,6 +108,10 @@ def abs(vec):
 
 def sum(vec, axis=None):
     return vec.sum() if axis is None else vec.sum(axis)
+
+
+def norm(vec):
+    return vec.norm()
 
 
 def min(vec):
@@ -354,6 +358,9 @@ class Vector(object):
 
     def sum(self):
         return matvec_lib.v_sum(self.data)
+
+    def norm(self):
+        return matvec_lib.v_norm(self.data)
 
     def mean(self):
         return matvec_lib.v_mean(self.data)

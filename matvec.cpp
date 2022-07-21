@@ -328,6 +328,17 @@ extern "C" EXPORT valuetype v_sum(void* _a) {
     return ret;
 }
 
+extern "C" EXPORT valuetype v_norm(void* _a) {
+    Vector* a = (Vector*)_a;
+    valuetype* av = a->values;
+    sizetype size = a->size;
+    valuetype ret = 0;
+    sizetype i;
+    #pragma omp parallel for shared(size, av) private(i) reduction(+:ret)
+    for(i=0;i<size;i++)
+        ret += av[i]*av[i];
+    return sqrt(ret);
+}
 
 extern "C" EXPORT valuetype v_max(void* _a) {
     Vector* a = (Vector*)_a;

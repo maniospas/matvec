@@ -9,7 +9,8 @@ n-dimensional column vectors, and n-by-n sparse matrices.
 <br>**Dependncies:** *numpy*
 
 # :zap: Quickstart
-Creating a 5-dimensional vector:
+Creating a 5-dimensional vector (can use `numpy` arrays 
+as inputs interchangeably with lists everywhere):
 ```python
 from matvec import Vector
 x = Vector([1, 2, 3, 4, 5])
@@ -56,3 +57,12 @@ More rigorous evaluation will take place in the future.
 | Sparse matrix with vec multiplication  | 0.024 sec   | 0.012 sec |
 
 ![benchmarks](benchmarks.png)
+
+
+# :memo: List of Operations
+* Full arithmetic operations `* + - / == < > <= >=` between
+vectors and other vectors or scalars.
+* Matrix-vector multiplication `*` (both left and right).
+* Element access and assignment for vectors with `[]`.
+* Masking, such as `y = x[x>0]`.
+* `matvec.clear()` Clears cache.
