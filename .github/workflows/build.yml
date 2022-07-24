@@ -44,6 +44,7 @@ jobs:
         with:
           name: wheels-3.10-windows-2019
           path: dist
+      - uses: actions/download-artifact@v3
         with:
           name: wheels-3.9-windows-2019
           path: dist
