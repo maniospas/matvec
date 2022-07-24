@@ -42,6 +42,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
+          name: wheels-3.10-windows-2019
+          path: dist
+        with:
+          name: wheels-3.9-windows-2019
           path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
