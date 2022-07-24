@@ -44,17 +44,20 @@ print(x*A)
 :factory: Common arithmetic operations.<br>
 
 # :volcano: Benchmark
-Experiments run on a machine witj 2.6 GHz CPU base clock,
-up to 4.4 GHz turbo boost of that clock, 12 logical
-cores, and 16GB DDR3 RAM.
+Benchmarks tested on a machine with 2.6 GHz CPU base clock and
+up to 4.4 GHz turbo boost, 12 logical
+cores, and 16GB DDR3 RAM. They span vectors of 1.E5 to
+1.E6 elements and matrices with 20x the number of
+non-zeroes.
 More rigorous evaluation will take place in the future.
 
-| Task                                   | numpy/scipy | matvec    |
-|----------------------------------------|-------------|-----------|
-| Allocate vectors with 2E6 elements     | 0.101 sec   | 0.106 sec |
-| 1000 temp. additions with 2E6 elements | 4.067 sec   | 2.265 sec |
-| Allocate matrix with 2E6 non-zeros     | 0.231 sec   | 0.073 sec |
-| Sparse matrix with vec multiplication  | 0.024 sec   | 0.012 sec |
+
+| Task                                      | numpy/scipy | matvec    |
+|-------------------------------------------|-------------|-----------|
+| Create new vector or array                | 0.026 sec   | 0.015 sec |
+| 1000 temp. additions of 1.E6 vectors only | 2.130 sec   | 1.061 sec |
+| Create matrix                             | 1.049 sec   | 0.378 sec |
+| Sparse matrix with vector multiplication  | 0.090 sec   | 0.021 sec |
 
 ![benchmarks](benchmarks.png)
 

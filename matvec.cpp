@@ -28,13 +28,20 @@
 std::unordered_map<sizetype, std::vector<valuetype*>*> reusable;
 
 valuetype* allocate_values(sizetype size) {
-    valuetype* pending_values;
-    if(reusable.find(size)!=reusable.end() && reusable[size]->size()>0) {
-        pending_values = reusable[size]->back();
-        reusable[size]->pop_back();
+    valuetype* pending_values = NULL;
+    #pragma omp critical
+    {
+        if(reusable.find(size)!=reusable.end() && reusable[size]->size()>0) {
+            pending_values = reusable[size]->back();
+            reusable[size]->pop_back();
+        }
     }
-    else
-        pending_values = new valuetype[size];
+    if(pending_values==NULL) {
+        #pragma omp critical
+        {
+            pending_values = new valuetype[size];
+        }
+    }
     return pending_values;
 }
 
@@ -129,6 +136,57 @@ extern "C" EXPORT void* multiply(void* _matrix, void* _vector) {
     sizetype* y = matrix->y;
     valuetype* mv = matrix->values;
     valuetype* vv = vector->values;
+    sizetype entries = matrix->entries;
+
+    if(reusable.find(size)==reusable.end())
+        reusable[size] = new std::vector<valuetype*>();
+
+    valuetype** intermediates;
+    int nthreads;
+    #pragma omp parallel shared(intermediates, nthreads, mv, vv, x, y, size)
+    {
+        #pragma omp single
+        {
+            nthreads = omp_get_num_threads();
+            intermediates = new valuetype*[nthreads];
+        }
+        const int ithread = omp_get_thread_num();
+        valuetype* intermediate = allocate_values(size);
+        intermediates[ithread] = intermediate;
+        const sizetype thread_entries = entries/nthreads;
+        const sizetype thread_start = thread_entries*ithread;
+        const sizetype thread_end = (ithread==nthreads-1)?entries:(thread_entries*ithread);
+        for(sizetype j=0;j<size;j++)
+            intermediate[j] = 0;
+        for(sizetype j=thread_start;j<thread_end;j++)
+            intermediate[x[j]] += mv[j]*vv[y[j]];
+    }
+
+    valuetype* ret = intermediates[0];
+    for(int ithread=1;ithread<nthreads;ithread++) {
+        valuetype* intermediate = intermediates[ithread];
+        sizetype i;
+        #pragma omp parallel for shared(size, ret, intermediate) private(i)
+        for(i=0;i<size;i++) {
+            ret[i] += intermediate[i];
+        }
+    }
+    for(int ithread=1;ithread<nthreads;ithread++)
+        reusable[size]->push_back(intermediates[ithread]);
+    delete intermediates;
+
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" EXPORT void* slim_multiply(void* _matrix, void* _vector) {
+    Matrix* matrix = (Matrix*)_matrix;
+    Vector* vector = (Vector*)_vector;
+    sizetype size = vector->size;
+    sizetype* x = matrix->x;
+    sizetype* y = matrix->y;
+    valuetype* mv = matrix->values;
+    valuetype* vv = vector->values;
     valuetype* ret = allocate_values(size);//new valuetype[size]();
     sizetype i;
     #pragma omp parallel for shared(size, ret) private(i)
@@ -136,28 +194,13 @@ extern "C" EXPORT void* multiply(void* _matrix, void* _vector) {
         ret[i] = 0;
     sizetype entries = matrix->entries;
     #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
-    for(i=0;i<entries;i++) {
-        valuetype val = mv[i]*vv[y[i]];
-        #pragma omp atomic
-        ret[x[i]] += val;
-    }
-    /*
-    sizetype row;
-    #pragma omp parallel for shared(entries, ret, x, y, mv, vv, matrix) private(row)
-    for(row=0;row<size;row++) {
-        std::vector<sizetype>* adjacent = matrix->row_indexes[row];
-        std::cout<<row<" row\n";
-        for(int j=0;j<adjacent->size();i++) {
-            i = adjacent->at(j);
-            ret[row] += mv[i]*vv[y[i]];
-        }
-    }*/
-
+    for(i=0;i<entries;i++)
+        ret[x[i]] += mv[i]*vv[y[i]];
     return new Vector(ret, size, false);
 }
 
 
-extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
+extern "C" EXPORT void* slim_rmultiply(void* _matrix, void* _vector) {
     Matrix* matrix = (Matrix*)_matrix;
     Vector* vector = (Vector*)_vector;
     sizetype size = vector->size;
@@ -174,6 +217,57 @@ extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
     #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
     for(i=0;i<entries;i++)
         ret[y[i]] += mv[i]*vv[x[i]];
+    return new Vector(ret, size, false);
+}
+
+
+extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
+    Matrix* matrix = (Matrix*)_matrix;
+    Vector* vector = (Vector*)_vector;
+    sizetype size = vector->size;
+    sizetype* x = matrix->x;
+    sizetype* y = matrix->y;
+    valuetype* mv = matrix->values;
+    valuetype* vv = vector->values;
+    sizetype entries = matrix->entries;
+
+    if(reusable.find(size)==reusable.end())
+        reusable[size] = new std::vector<valuetype*>();
+
+    valuetype** intermediates;
+    int nthreads;
+    #pragma omp parallel shared(intermediates, nthreads, mv, vv, x, y, size)
+    {
+        #pragma omp single
+        {
+            nthreads = omp_get_num_threads();
+            intermediates = new valuetype*[nthreads];
+        }
+        const int ithread = omp_get_thread_num();
+        valuetype* intermediate = allocate_values(size);
+        intermediates[ithread] = intermediate;
+        const sizetype thread_entries = entries/nthreads;
+        const sizetype thread_start = thread_entries*ithread;
+        const sizetype thread_end = (ithread==nthreads-1)?entries:(thread_entries*ithread);
+        for(sizetype j=0;j<size;j++)
+            intermediate[j] = 0;
+        for(sizetype j=thread_start;j<thread_end;j++)
+            intermediate[y[j]] += mv[j]*vv[x[j]];
+    }
+
+    valuetype* ret = intermediates[0];
+    for(int ithread=1;ithread<nthreads;ithread++) {
+        valuetype* intermediate = intermediates[ithread];
+        sizetype i;
+        #pragma omp parallel for shared(size, ret, intermediate) private(i)
+        for(i=0;i<size;i++) {
+            ret[i] += intermediate[i];
+        }
+    }
+    for(int ithread=1;ithread<nthreads;ithread++)
+        reusable[size]->push_back(intermediates[ithread]);
+    delete intermediates;
+
     return new Vector(ret, size, false);
 }
 

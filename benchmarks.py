@@ -17,7 +17,7 @@ class Timer:
         self._tic = time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        matvec.clear()  # cold-start performance
+        #matvec.clear()  # cold-start performance
         self.values.append(time()-self._tic)
 
     def mean(self):
@@ -31,10 +31,10 @@ matvec_matrix_allocation = Timer()
 matvec_multiply = Timer()
 datasize = list()
 
-for iter in tqdm(range(100)):
-    volume = 10000*(iter//10+1)
+for iter in tqdm(range(0, 100)):
+    volume = 100000*(iter//10+1)
     datasize.append(volume)
-    density = 20
+    density = 20#1+random.choice(list(range(20)))
     x = np.random.choice(list(range(volume)), volume*density, replace=True)
     y = np.random.choice(list(range(volume)), volume*density, replace=True)
     values = [random.random() for _ in range(volume*density)]
