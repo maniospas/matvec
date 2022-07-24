@@ -46,18 +46,18 @@ print(x*A)
 # :volcano: Benchmark
 Benchmarks tested on a machine with 2.6 GHz CPU base clock and
 up to 4.4 GHz turbo boost, 12 logical
-cores, and 16GB DDR3 RAM. They span vectors of 1.E5 to
-1.E6 elements and matrices with 20x the number of
+cores, and 16GB DDR3 RAM. They span vectors of 1.E4 to
+1.E6 elements and matrices with up to 20x the number of
 non-zeroes.
 More rigorous evaluation will take place in the future.
 
 
 | Task                                      | numpy/scipy | matvec    |
 |-------------------------------------------|-------------|-----------|
-| Create new vector or array                | 0.026 sec   | 0.015 sec |
+| Create new vector or array                | 0.025 sec   | 0.014 sec |
 | 1000 temp. additions of 1.E6 vectors only | 2.130 sec   | 1.061 sec |
-| Create matrix                             | 1.049 sec   | 0.378 sec |
-| Sparse matrix with vector multiplication  | 0.090 sec   | 0.021 sec |
+| Create matrix                             | 0.505 sec   | 0.183 sec |
+| Sparse matrix with vector multiplication  | 0.045 sec   | 0.020 sec |
 
 ![benchmarks](benchmarks.png)
 
