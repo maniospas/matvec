@@ -4,6 +4,7 @@
 
 from setuptools import setup, Extension, find_packages
 from distutils.command.build_ext import build_ext as build_ext_orig
+import numpy
 
 with open("README.md", "r") as file:
     long_description = file.read()
@@ -47,8 +48,9 @@ setup(
         Extension(
             "matvec/matvec.py",
             ["matvec.cpp"],
-              extra_compile_args=['-O2', '-openmp', '-fopenmp'],
-              extra_link_args=[],
+            extra_compile_args=['-O2', '-openmp', '-fopenmp'],
+            extra_link_args=[],
+            include_dirs=[numpy.get_include()]
         ),
     ],
     cmdclass={'build_ext': build_ext},

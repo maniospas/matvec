@@ -1,4 +1,3 @@
-//#define DLL_EXPORT __declspec(dllimport) extern "C"
 #define sizetype long long
 #define valuetype double
 #include <iostream>
@@ -8,6 +7,8 @@
 #include "Python.h"
 #include <map>
 #include<unordered_map>
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include "numpy/arrayobject.h"
 
 #if defined(_MSC_VER)
     //  Microsoft
@@ -793,12 +794,7 @@ extern "C" EXPORT void set_number_of_threads(int threads) {
     omp_set_num_threads(threads);
 }
 
-extern "C" EXPORT PyObject * v_to_array(void* _vector) {
+extern "C" EXPORT void* v_to_array(void* _vector) {
     Vector* vector = (Vector*)_vector;
-    for(sizetype i=0;i<vector->size;i++){
-        //PyLong_FromLongLong(vector->values[i]);
-        //PyFloat_FromDouble(vector->values[i]);
-        //PyObject_SetItem(fill, Py_BuildValue("L", i), Py_BuildValue("d", vector->values[i]));
-    }
-    return NULL;
+    return vector->values;
 }

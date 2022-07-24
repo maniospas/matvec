@@ -18,7 +18,7 @@ def load_matvec(matvec_libfile, threads=None):
     matvec_lib.free_matrix.argtypes = [c_void_p]
     matvec_lib.free_vector.argtypes = [c_void_p]
     matvec_lib.v_to_array.argtypes = [c_void_p]
-    matvec_lib.v_to_array.restype = ctypes.py_object
+    matvec_lib.v_to_array.restype = c_void_p
 
     matvec_lib.get.argtypes = [c_void_p, sizetype]
     matvec_lib.get.restype = c_double
@@ -199,13 +199,11 @@ class Vector(object):
         matvec_lib.assign(self.data, to_vector(other).data)
 
     def __array__ (self):  # compatibility with numpy conversion
-        populate = np.empty(matvec_lib.len(self.data))
-        #for i in range(len(self)):
-        #    populate[i] = matvec_lib.get(self.data, i)
-        return populate
+        data = cast(matvec_lib.v_to_array(self.data), POINTER(c_double))
+        return np.ctypeslib.as_array(data, (len(self),))
 
-    def np(self):
-        return np.array(self.__array__(), copy=False)
+    def np(self, copy=True):
+        return np.array(self.__array__(), copy=copy)
 
     def __getitem__(self, i):
         if isinstance(i, Vector):
