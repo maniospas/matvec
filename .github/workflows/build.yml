@@ -21,8 +21,6 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.8.1
 
-      - name: Install numpy
-
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
 
