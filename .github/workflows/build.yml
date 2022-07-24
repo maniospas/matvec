@@ -30,24 +30,6 @@ jobs:
       - name: Build wheels
         run: python setup.py bdist_wheel
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: wheels-${{ matrix.python-version }}-${{ matrix.os }}
-          path: dist/*.whl
-          retention-days: 1
-
-  deploy_wheels:
-    needs: build_wheels
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: wheels-3.10-windows-2019
-          path: dist
-      - uses: actions/download-artifact@v3
-        with:
-          name: wheels-3.9-windows-2019
-          path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
