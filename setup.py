@@ -4,6 +4,10 @@
 
 from setuptools import setup, Extension, find_packages
 from distutils.command.build_ext import build_ext as build_ext_orig
+
+from setuptools import dist
+dist.Distribution().fetch_build_eggs(['numpy'])
+
 import numpy
 
 with open("README.md", "r") as file:
