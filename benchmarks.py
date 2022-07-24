@@ -17,7 +17,7 @@ class Timer:
         self._tic = time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        #matvec.clear()  # cold-start performance
+        matvec.clear()  # cold-start performance
         self.values.append(time()-self._tic)
 
     def mean(self):
@@ -30,11 +30,13 @@ matvec_vector_allocation = Timer()
 matvec_matrix_allocation = Timer()
 matvec_multiply = Timer()
 datasize = list()
+nnzs = list()
 
 for iter in tqdm(range(0, 100)):
-    volume = 100000*(iter//10+1)
+    volume = 10000*(1+iter)
     datasize.append(volume)
-    density = 20#1+random.choice(list(range(20)))
+    density = 1+random.choice(list(range(20)))
+    nnzs.append(volume*density)
     x = np.random.choice(list(range(volume)), volume*density, replace=True)
     y = np.random.choice(list(range(volume)), volume*density, replace=True)
     values = [random.random() for _ in range(volume*density)]
@@ -60,22 +62,22 @@ print(f"Matrix-vector multiplication\t {scipy_multiply.mean():.3f} sec\t {matvec
 
 from matplotlib import pyplot as plt
 plt.subplot(1, 3, 1)
-plt.plot(datasize, numpy_vector_allocation.values, label="numpy")
-plt.plot(datasize, matvec_vector_allocation.values, label="matvec")
+plt.scatter(datasize, numpy_vector_allocation.values, label="numpy")
+plt.scatter(datasize, matvec_vector_allocation.values, label="matvec")
 plt.ylabel("sec")
 plt.xlabel("Vector length")
 plt.legend()
 plt.title("Vector allocation")
 plt.subplot(1, 3, 2)
-plt.plot(datasize, scipy_matrix_allocation.values, label="scipy")
-plt.plot(datasize, matvec_matrix_allocation.values, label="matvec")
+plt.scatter(nnzs, scipy_matrix_allocation.values, label="scipy")
+plt.scatter(nnzs, matvec_matrix_allocation.values, label="matvec")
 plt.ylabel("sec")
-plt.xlabel("Vector length")
+plt.xlabel("Non-zeroes")
 plt.legend()
 plt.title("Matrix allocation")
 plt.subplot(1, 3, 3)
-plt.plot([v*density for v in datasize], scipy_multiply.values, label="scipy")
-plt.plot([v*density for v in datasize], matvec_multiply.values, label="matvec")
+plt.scatter(nnzs, scipy_multiply.values, label="scipy")
+plt.scatter(nnzs, matvec_multiply.values, label="matvec")
 plt.ylabel("sec")
 plt.xlabel("Non-zeroes")
 plt.legend()

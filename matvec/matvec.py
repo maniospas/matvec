@@ -44,8 +44,7 @@ def load_matvec(matvec_libfile, threads=None):
     for operation in [matvec_lib.add, matvec_lib.sub, matvec_lib.v_mult,
                       matvec_lib.v_pow, matvec_lib.v_div, matvec_lib.mask,
                       matvec_lib.equals, matvec_lib.greater, matvec_lib.greater_eq,
-                      matvec_lib.multiply, matvec_lib.rmultiply,
-                      matvec_lib.slim_multiply, matvec_lib.slim_rmultiply]:
+                      matvec_lib.multiply, matvec_lib.rmultiply]:
         operation.argtypes = [c_void_p, c_void_p]
         operation.restype = c_void_p
 
@@ -137,19 +136,6 @@ def multiply(matrix, vec):
     return ret
 
 
-_matvec_mode = "fast"
-
-
-def set_multiplitcation_mode(mode="slim"):
-    _matvec_mode = mode
-    if mode not in ["fast", "slim"]:
-        raise Exception("Invalid matvec multiplication mode: choose either fast or slim")
-
-
-def get_multiplitcation_mode():
-    return _matvec_mode
-
-
 class Matrix(object):
     def __init__(self, x, y, values, size):
         if size > 0:
@@ -187,15 +173,13 @@ class Matrix(object):
         return ret
 
     def __mul__(self, other):
-        mul = matvec_lib.multiply if _matvec_mode == "fast" else matvec_lib.slim_multiply
         ret = Vector()
-        ret.data = mul(self.data, to_vector(other).data)
+        ret.data = matvec_lib.multiply(self.data, to_vector(other).data)
         return ret
 
     def __rmul__(self, other):
-        rmul = matvec_lib.rmultiply if _matvec_mode == "fast" else matvec_lib.slim_rmultiply
         ret = Vector()
-        ret.data = rmul(to_vector(other).data, self.data)
+        ret.data = matvec_lib.rmultiply(to_vector(other).data, self.data)
         return ret
 
     def __len__(self):
