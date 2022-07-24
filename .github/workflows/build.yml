@@ -11,7 +11,6 @@ jobs:
       matrix:
         #[ubuntu-20.04, windows-2019, macOS-11]
         os: [windows-2019]
-        python-version: ['3.9', '3.10']
 
     steps:
       - uses: actions/checkout@v3
@@ -36,7 +35,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: wheels-3.10-windows-2019
+          name: artifact
           path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
