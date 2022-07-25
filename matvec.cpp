@@ -7,8 +7,6 @@
 #include "Python.h"
 #include <map>
 #include<unordered_map>
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include "numpy/arrayobject.h"
 
 #if defined(_MSC_VER)
     //  Microsoft
