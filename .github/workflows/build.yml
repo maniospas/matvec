@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, linux-latest]
+        os: [windows-latest, ubuntu-20.04]
 
     steps:
       - uses: actions/checkout@v3
@@ -37,10 +37,9 @@ jobs:
         with:
           path: artifacts
       - shell: bash
-        working-directory: artifacts
-        run: |
+        run:
           for i in $( ls ); do
-            mv $i dist
+            mv artifacts/$i dist
           done
 
       - name: Publish to PyPI
