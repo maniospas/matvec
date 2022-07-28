@@ -4,6 +4,7 @@
 
 from setuptools import setup, Extension, find_packages
 from distutils.command.build_ext import build_ext as build_ext_orig
+import platform
 
 
 with open("README.md", "r") as file:
@@ -48,7 +49,7 @@ setup(
         Extension(
             "matvec/matvec.py",
             ["matvec.cpp"],
-            extra_compile_args=['-O2', '-openmp', '-fopenmp'],
+            extra_compile_args=['-O2'] + (['-openmp'] if platform.system() == 'Windows' else ['-fopenmp']),
             extra_link_args=[],
         ),
     ],
