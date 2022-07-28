@@ -35,12 +35,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          path: artifacts
-      - shell: bash
-        run:
-          for i in $( ls ); do
-            mv artifacts/$i dist
-          done
+          path: dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
