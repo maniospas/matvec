@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, linux-latest]
 
     steps:
       - uses: actions/checkout@v3
@@ -26,6 +26,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
+          name: build-${{ matrix.os }}-${{ github.sha }}
           path: ./wheelhouse/*.whl
 
   deploy_wheels:
@@ -34,8 +35,14 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: artifact
-          path: dist
+          path: artifacts
+      - shell: bash
+        working-directory: artifacts
+        run: |
+          for i in $( ls ); do
+            mv $i dist
+          done
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
