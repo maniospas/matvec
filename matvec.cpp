@@ -171,8 +171,23 @@ extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
         ret[i] = 0;
     sizetype entries = matrix->entries;
     #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
-    for(i=0;i<entries;i++)
-        ret[y[i]] += mv[i]*vv[x[i]];
+    for(i=0;i<entries;i++) {
+        valuetype val = mv[i]*vv[x[i]];
+        #pragma omp atomic
+        ret[y[i]] += val;
+    }
+    /*
+    sizetype row;
+    #pragma omp parallel for shared(entries, ret, x, y, mv, vv, matrix) private(row)
+    for(row=0;row<size;row++) {
+        std::vector<sizetype>* adjacent = matrix->row_indexes[row];
+        std::cout<<row<" row\n";
+        for(int j=0;j<adjacent->size();i++) {
+            i = adjacent->at(j);
+            ret[row] += mv[i]*vv[y[i]];
+        }
+    }*/
+
     return new Vector(ret, size, false);
 }
 

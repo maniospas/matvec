@@ -29,7 +29,7 @@ class build_ext(build_ext_orig):
 
 setup(
     name='matvec',
-    version='0.1.4',
+    version='0.1.5',
     author="Emmanouil (Manios) Krasanakis",
     author_email="maniospas@hotmail.com",
     description="Fast matrix transforms",
@@ -50,7 +50,7 @@ setup(
             "matvec/matvec.py",
             ["matvec.cpp"],
             extra_compile_args=['-O2'] + (['-openmp'] if platform.system() == 'Windows' else ['-fopenmp']),
-            extra_link_args=[],
+            extra_link_args=['-fopenmp'],
         ),
     ],
     cmdclass={'build_ext': build_ext},
