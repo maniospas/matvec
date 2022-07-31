@@ -29,7 +29,7 @@ class build_ext(build_ext_orig):
 
 setup(
     name='matvec',
-    version='0.1.5',
+    version='0.1.6',
     author="Emmanouil (Manios) Krasanakis",
     author_email="maniospas@hotmail.com",
     description="Fast matrix transforms",
