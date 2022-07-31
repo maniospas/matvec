@@ -396,13 +396,17 @@ extern "C" EXPORT void* m_sum_rows(void* _a) {
     valuetype* av = a->values;
     sizetype size = a->size;
     valuetype* ret = allocate_values(size);//new valuetype[size]();
+    sizetype entries = a->entries;
     sizetype i;
     #pragma omp parallel for shared(size, ret) private(i)
     for(i=0;i<size;i++)
         ret[i] = 0;
     #pragma omp parallel for shared(size, ret, ax, av) private(i)
-    for(i=0;i<size;i++)
+    for(i=0;i<entries;i++) {
+        valuetype val = av[i];
+        #pragma omp atomic
         ret[ax[i]] += av[i];
+     }
     return new Vector(ret, size, false);
 }
 
@@ -413,13 +417,17 @@ extern "C" EXPORT void* m_sum_cols(void* _a) {
     valuetype* av = a->values;
     sizetype size = a->size;
     valuetype* ret = allocate_values(size);//new valuetype[size]();
+    sizetype entries = a->entries;
     sizetype i;
     #pragma omp parallel for shared(size, ret) private(i)
     for(i=0;i<size;i++)
         ret[i] = 0;
     #pragma omp parallel for shared(size, ret, ay, av) private(i)
-    for(i=0;i<size;i++)
+    for(i=0;i<entries;i++) {
+        valuetype val = av[i];
+        #pragma omp atomic
         ret[ay[i]] += av[i];
+     }
     return new Vector(ret, size, false);
 }
 
