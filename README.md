@@ -1,4 +1,4 @@
-# matvec
+![matvec](logo.png)
 
 A domain-specific language for fast graph shift operations.
 This implements mathematical fields on numbers,
@@ -6,7 +6,7 @@ n-dimensional column vectors, and n-by-n sparse matrices.
 
 **License:** Apache Software License
 <br>**Author:** Emmanouil (Manios) Krasanakis
-<br>**Dependncies:** *numpy*
+<br>**Dependencies:** `numpy`
 
 # :zap: Quickstart
 Creating a 5-dimensional vector (can use `numpy` arrays 
@@ -16,8 +16,8 @@ from matvec import Vector
 x = Vector([1, 2, 3, 4, 5])
 ```
 
-Creating a 5x5 sparse matrix A in coo-format 
-with non-zero elements A[1,2]=9 and A[3,0]=21
+Creating a 5x5 sparse matrix `A` in coo-format 
+with non-zero elements `A[1,2]=9` and `A[3,0]=21`
 ```python
 from matvec import Matrix
 A = Matrix([1, 2],
@@ -31,7 +31,7 @@ Print the outcome of matrix-vector multiplication:
 print(A*x)
 ```
 
-Print the outcome of left-multiplying transpose(x)
+Print the outcome of left-multiplying the transpose of x
 with A:
 ```python
 print(x*A)
@@ -68,4 +68,4 @@ vectors and other vectors or scalars.
 * Matrix-vector multiplication `*` (both left and right).
 * Element access and assignment for vectors with `[]`.
 * Masking, such as `y = x[x>0]`.
-* `matvec.clear()` Clears cache.
+* `matvec.clear()` clears cache.
