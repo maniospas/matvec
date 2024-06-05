@@ -17,8 +17,8 @@ class Timer:
         self._tic = time()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        matvec.clear()  # cold-start performance
         self.values.append(time()-self._tic)
+        matvec.clear()  # cold-start performance, comment this out to investigate in operational conditions
 
     def mean(self):
         return np.mean(self.values)
@@ -35,7 +35,7 @@ nnzs = list()
 for iter in tqdm(range(0, 100)):
     volume = 10000*(1+iter)
     datasize.append(volume)
-    density = 1+random.choice(list(range(20)))
+    density = 1+random.choice(list(range(100)))  # max degree is 20
     nnzs.append(volume*density)
     x = np.random.choice(list(range(volume)), volume*density, replace=True)
     y = np.random.choice(list(range(volume)), volume*density, replace=True)
@@ -45,7 +45,7 @@ for iter in tqdm(range(0, 100)):
     with numpy_vector_allocation:
         scipy_vector = np.array(vector)
     with scipy_matrix_allocation:
-        scipy_matrix = sp.coo_matrix((values, (x, y)), shape=(len(vector), len(vector)))
+        scipy_matrix = sp.coo_matrix((values, (x, y)), shape=(len(vector), len(vector))).tocsr()
     with matvec_vector_allocation:
         matvec_vector = matvec.Vector(vector)
     with matvec_matrix_allocation:
@@ -54,6 +54,10 @@ for iter in tqdm(range(0, 100)):
         scipy_result = scipy_matrix * scipy_vector
     with matvec_multiply:
         matvec_result = matvec_matrix * matvec_vector
+
+    diff = np.mean(np.abs(np.array(scipy_result)-np.array(matvec_result)))
+    if diff > 1.E-9:
+        raise Exception(f"Too different results: mabs error {diff}")
 
 print(f"Measure\t\t numpy/scipy\t matvec")
 print(f"Vector allocation\t {numpy_vector_allocation.mean():.3f} sec\t {matvec_vector_allocation.mean():.3f} sec")

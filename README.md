@@ -47,17 +47,19 @@ print(x*A)
 Benchmarks tested on a machine with 2.6 GHz CPU base clock and
 up to 4.4 GHz turbo boost, 12 logical
 cores, and 16GB DDR3 RAM. They span vectors of 1.E4 to
-1.E6 elements and matrices with up to 20x the number of
-non-zeroes.
-More rigorous evaluation will take place in the future.
+1.E6 elements and matrices with up to 100x the number of
+non-zeroes (that is, if the matrices represented graphs, 
+node degrees would be up to 100).
+
+**For a lot of non-zeroes paralellization may be worse than scipy.**
 
 
-| Task                                      | numpy/scipy | matvec    |
-|-------------------------------------------|-------------|-----------|
-| Create new vector or array                | 0.025 sec   | 0.014 sec |
-| 1000 temp. additions of 1.E6 vectors only | 2.130 sec   | 1.061 sec |
-| Create matrix                             | 0.505 sec   | 0.183 sec |
-| Sparse matrix with vector multiplication  | 0.045 sec   | 0.020 sec |
+| Task                                     | numpy/scipy | matvec    |
+|------------------------------------------|-------------|-----------|
+| Create new vector or array               | 0.019 sec   | 0.019 sec |
+| 1000 temp. additions of 1.E6 vectors     | 1.897 sec   | 1.321 sec |
+| Create matrix                            | 0.505 sec   | 0.183 sec |
+| Sparse matrix with vector multiplication | 0.269 sec   | 0.103 sec |
 
 ![benchmarks](benchmarks.png)
 
