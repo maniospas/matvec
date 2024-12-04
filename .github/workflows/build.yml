@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.12"]  # The Python version for cibuildwheel environment
         os: [windows-latest, ubuntu-latest]
 
     steps:
@@ -30,6 +30,8 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
+          # Skip all Python versions before 3.11
+          CIBW_SKIP: "cp310-* cp39-* cp38-* cp37-* cp36-*"
           CIBW_BUILD_VERBOSITY: 2
 
       - uses: actions/upload-artifact@v3
