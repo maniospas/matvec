@@ -5,8 +5,6 @@ import scipy.sparse as sp
 from timeit import default_timer as time
 from tqdm import tqdm
 
-matvec.load_matvec("build/lib.win-amd64-3.10/matvec/matvec/py.pyd")
-
 
 class Timer:
     def __init__(self):
@@ -22,6 +20,7 @@ class Timer:
 
     def mean(self):
         return np.mean(self.values)
+
 
 numpy_vector_allocation = Timer()
 scipy_matrix_allocation = Timer()
@@ -45,15 +44,15 @@ for iter in tqdm(range(0, 100)):
     with numpy_vector_allocation:
         scipy_vector = np.array(vector)
     with scipy_matrix_allocation:
-        scipy_matrix = sp.coo_matrix((values, (x, y)), shape=(len(vector), len(vector))).tocsr()
+        scipy_matrix = sp.coo_matrix((values, (x, y)), shape=(len(vector), len(vector)))
     with matvec_vector_allocation:
         matvec_vector = matvec.Vector(vector)
     with matvec_matrix_allocation:
         matvec_matrix = matvec.Matrix(x, y, values, len(vector))
     with scipy_multiply:
-        scipy_result = scipy_matrix * scipy_vector
+        scipy_result = scipy_matrix @ scipy_vector
     with matvec_multiply:
-        matvec_result = matvec_matrix * matvec_vector
+        matvec_result = matvec_matrix @ matvec_vector
 
     diff = np.mean(np.abs(np.array(scipy_result)-np.array(matvec_result)))
     if diff > 1.E-9:

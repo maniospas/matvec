@@ -44,24 +44,23 @@ print(x*A)
 :factory: Common arithmetic operations.<br>
 
 # :volcano: Benchmark
-Benchmarks tested on a machine with 2.6 GHz CPU base clock and
-up to 4.4 GHz turbo boost, 12 logical
-cores, and 16GB DDR3 RAM. They span vectors of 1.E4 to
-1.E6 elements and matrices with up to 100x the number of
-non-zeroes (that is, if the matrices represented graphs, 
-node degrees would be up to 100).
+Benchmarks tested on a machine with up to 5.2 GHz turbo frequency,
+24 logical cores, and 32GB DDR3 RAM. They span vectors of 1.E4 to
+1.E6 elements and matrices with non-zeroes up to 100x the number of
+vector elements (that is, if the matrices represented graphs, 
+expected node degrees would be up to 100).
 
 **For a lot of non-zeroes paralellization may be worse than scipy.**
 
 
 | Task                                     | numpy/scipy | matvec    |
 |------------------------------------------|-------------|-----------|
-| Create new vector or array               | 0.019 sec   | 0.019 sec |
-| 1000 temp. additions of 1.E6 vectors     | 1.897 sec   | 1.321 sec |
-| Create matrix                            | 0.505 sec   | 0.183 sec |
-| Sparse matrix with vector multiplication | 0.269 sec   | 0.103 sec |
+| Create new vector or array               | 0.012 sec   | 0.011 sec |
+| 1000 temp. additions of 1.E6 vectors     | 0.446 sec   | 0.066 sec |
+| Create matrix                            | 1.373 sec   | 0.659 sec |
+| Sparse matrix with vector multiplication | 0.099 sec   | 0.019 sec |
 
-![benchmarks](benchmarks.png)
+![benchmarks](benchmarks/benchmarks.png)
 
 
 # :memo: List of Operations

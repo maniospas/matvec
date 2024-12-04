@@ -1,816 +1,121 @@
-#define sizetype long long
-#define iteratortype int
-#define valuetype double
-#include <iostream>
-#include <math.h>
-#include <omp.h>
-#include <vector>
-#include "Python.h"
-#include <map>
-#include<unordered_map>
-#include <cstdlib>
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include "impl.h"
 
+namespace py = pybind11;
 
-#if defined(_MSC_VER)
-    //  Microsoft
-    #define EXPORT __declspec(dllexport)
-#elif defined(__GNUC__)
-    //  GCC
-    #define EXPORT __attribute__((visibility("default")))
-    #define IMPORT
-#else
-    //  do nothing and hope for the best?
-    #define EXPORT
-    #define IMPORT
-    #pragma warning Unknown dynamic link import/export semantics.
-#endif
+PYBIND11_MODULE(matvec, m) {
+    m.doc() = "Matrix and Vector types with methods";
 
-// TODO: integrate https://github.com/taoito/matvec-mpi
-
-std::unordered_map<sizetype, std::vector<valuetype*>*> reusable;
-
-valuetype* allocate_values(sizetype size) {
-    valuetype* pending_values;
-    if(reusable.find(size)!=reusable.end() && reusable[size]->size()) {
-        pending_values = reusable[size]->back();
-        reusable[size]->pop_back();
-    }
-    else
-        pending_values = (valuetype*)malloc(size * sizeof(valuetype));
-    return pending_values;
-}
-
-class Vector {
-    public:
-        Py_buffer* release_buffer;
-        valuetype* values;
-        sizetype size;
-
-        Vector(valuetype* _values, sizetype _size, bool copy=true,  Py_buffer* _release_buffer=NULL) {
-            if(copy) {
-                valuetype* pending_values = allocate_values(_size);
-                iteratortype i;
-                #pragma omp parallel for shared(_size, pending_values, _values) private(i)
-                for(i=0;i<_size;++i)
-                    pending_values[i] = _values[i];
-                values = pending_values;
+    // Vector class
+    py::class_<Vector>(m, "Vector")
+        .def(py::init([](py::object values) {
+            py::array array = py::array_t<valuetype>::ensure(values);
+            if (!array)
+                throw std::runtime_error("Expected a 1-dimensional array or list.");
+            py::buffer_info info = array.request();
+            if (info.ndim != 1)
+                throw std::runtime_error("Expected a 1-dimensional array or list.");
+            auto data_ptr = static_cast<valuetype*>(info.ptr);
+            return new Vector(data_ptr, info.shape[0], true);
+        }))
+        .def("__getitem__", [](Vector &self, iteratortype i) { return get(&self, i); })
+        .def("__getitem__", [](Vector &self, iteratortype i) { return get(&self, i); })
+        .def("__setitem__", [](Vector &self, iteratortype i, valuetype value) { set(&self, i, value); })
+        .def("__len__", [](Vector &self) { return self.size; })
+        .def("__add__", [](Vector &self, Vector &other) { return (Vector *)add(&self, &other); })
+        .def("__sub__", [](Vector &self, Vector &other) { return (Vector *)sub(&self, &other); })
+        .def("__mul__", [](Vector &self, Vector &other) { return (Vector *)v_mult(&self, &other); })
+        .def("__div__", [](Vector &self, Vector &other) { return (Vector *)v_div(&self, &other); })
+        .def("__eq__", [](Vector &self, Vector &other) { return (Vector *)equals(&self, &other); })
+        .def("__gt__", [](Vector &self, Vector &other) { return (Vector *)greater(&self, &other); })
+        .def("__ge__", [](Vector &self, Vector &other) { return (Vector *)greater_eq(&self, &other); })
+        .def("dot", [](Vector &self, Vector &other) { return dot(&self, &other); })
+        .def("norm", [](Vector &self) { return v_norm(&self); })
+        .def("sum", [](Vector &self) { return v_sum(&self); })
+        .def("max", [](Vector &self) { return v_max(&self); })
+        .def("min", [](Vector &self) { return v_min(&self); })
+        .def("__str__", [](Vector &self) {
+            std::ostringstream oss;
+            oss << "[";
+            for (size_t i = 0; i < self.size; ++i) {
+                if (i)
+                    oss << ", ";
+                oss << self.values[i];
             }
-            else
-                values = _values;
-            release_buffer = _release_buffer;
-            size = _size;
-        }
-        ~Vector() {
-            if(release_buffer!=NULL) {
-                PyBuffer_Release(release_buffer);
-                delete release_buffer;
+            oss << "]";
+            return oss.str(); // Convert the stream to a string
+        })
+        .def("__array__", [](Vector &self) {
+            return py::array_t<valuetype>(self.size, self.values);
+        })
+        .def("__array__", [](Vector &self, bool copy) {
+            if (copy) {
+                py::array_t<valuetype> array(self.size);
+                auto buf = array.request();
+                std::memcpy(buf.ptr, self.values, self.size * sizeof(valuetype));
+                return array;
+            } else {
+                return py::array_t<valuetype>(
+                    self.size,                  // Shape (1D array with size elements)
+                    self.values,                // Pointer to the data
+                    py::cast(&self)             // Ensure the array keeps the Vector alive
+                );
             }
-            else {
-                if(reusable.find(size)==reusable.end())
-                    reusable[size] = new std::vector<valuetype*>();
-                reusable[size]->push_back(values);
-                //delete values;
+        }, py::arg("copy") = true);
+
+    // Matrix class
+    py::class_<Matrix>(m, "Matrix")
+        .def(py::init([](py::object x, py::object y, py::object values, sizetype size) {
+            // Ensure inputs are numpy-compatible arrays
+            py::array array_x = py::array_t<sizetype>::ensure(x);
+            py::array array_y = py::array_t<sizetype>::ensure(y);
+            py::array array_values = py::array_t<valuetype>::ensure(values);
+
+            if (!array_x || !array_y || !array_values) {
+                throw std::runtime_error("Inputs must be 1-dimensional arrays or lists.");
             }
-        }
-};
 
+            // Request buffer information
+            py::buffer_info info_x = array_x.request();
+            py::buffer_info info_y = array_y.request();
+            py::buffer_info info_values = array_values.request();
 
-class Matrix {
-    public:
-        sizetype* x;
-        sizetype* y;
-        valuetype* values;
-        sizetype entries;
-        sizetype size;
-        //std::unordered_map<sizetype, std::vector<sizetype>*> row_indexes;
-        //std::unordered_map<sizetype, std::vector<sizetype>*> col_indexes;
-
-        Matrix(sizetype* _x, sizetype* _y, valuetype* _values, sizetype _entries, sizetype _size, bool copy=true) {
-            if(copy) {
-                sizetype* px = (sizetype*)malloc(_entries * sizeof(sizetype));//new sizetype[_entries];
-                sizetype* py = (sizetype*)malloc(_entries * sizeof(sizetype));//new sizetype[_entries];
-                valuetype* pv = (valuetype*)malloc(_entries * sizeof(valuetype));//new valuetype[_entries];
-                iteratortype i;
-                #pragma omp parallel for shared(_entries, px, py, pv, _x, _y, _values) private(i)
-                for(i=0;i<_entries;++i) {
-                    px[i] = _x[i];
-                    py[i] = _y[i];
-                    pv[i] = _values[i];
-                }
-                x = px;
-                y = py;
-                values = pv;
+            if (info_x.ndim != 1 || info_y.ndim != 1 || info_values.ndim != 1) {
+                throw std::runtime_error("Expected 1-dimensional arrays or lists for x, y, and values.");
             }
-            else {
-                x = _x;
-                y = _y;
-                values = _values;
-            }
-            entries = _entries;
-            size = _size;
-            /*iteratortype i;
-            //#pragma omp parallel for shared(_entries, px, py, pv, _x, _y, _values) private(i)
-            for(i=0;i<_entries;++i) {
-                if(row_indexes.find(_x[i]) != row_indexes.end())
-                    row_indexes[_x[i]] = new std::vector<sizetype>();
-                row_indexes[_x[i]]->push_back(i);
-            }*/
-        }
-        ~Matrix() {
-            free(x);
-            free(y);
-            free(values);
-        }
-};
 
-extern "C" EXPORT void* multiply(void* _matrix, void* _vector) {
-    Matrix* matrix = (Matrix*)_matrix;
-    Vector* vector = (Vector*)_vector;
-    sizetype size = vector->size;
-    sizetype* x = matrix->x;
-    sizetype* y = matrix->y;
-    valuetype* mv = matrix->values;
-    valuetype* vv = vector->values;
-    valuetype* ret = allocate_values(size);//new valuetype[size]();
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = 0;
-    sizetype entries = matrix->entries;
-    #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
-    for(i=0;i<entries;++i) {
-        valuetype val = mv[i]*vv[y[i]];
-        #pragma omp atomic
-        ret[x[i]] += val;
-    }
-
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* rmultiply(void* _matrix, void* _vector) {
-    Matrix* matrix = (Matrix*)_matrix;
-    Vector* vector = (Vector*)_vector;
-    sizetype size = vector->size;
-    sizetype* x = matrix->x;
-    sizetype* y = matrix->y;
-    valuetype* mv = matrix->values;
-    valuetype* vv = vector->values;
-    valuetype* ret = allocate_values(size);//new valuetype[size]();
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = 0;
-    sizetype entries = matrix->entries;
-    #pragma omp parallel for shared(entries, ret, x, y, mv, vv) private(i)
-    for(i=0;i<entries;++i) {
-        valuetype val = mv[i]*vv[x[i]];
-        #pragma omp atomic
-        ret[y[i]] += val;
-    }
-    /*
-    sizetype row;
-    #pragma omp parallel for shared(entries, ret, x, y, mv, vv, matrix) private(row)
-    for(row=0;row<size;row++) {
-        std::vector<sizetype>* adjacent = matrix->row_indexes[row];
-        std::cout<<row<" row\n";
-        for(int j=0;j<adjacent->size();++i) {
-            i = adjacent->at(j);
-            ret[row] += mv[i]*vv[y[i]];
-        }
-    }*/
-
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* mask(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    iteratortype i;
-    sizetype nonzeroes = 0;
-    #pragma omp parallel for shared(size, av, bv) private(i) reduction(+:nonzeroes)
-    for(i=0;i<size;++i)
-        if(bv[i])
-            nonzeroes += 1;
-    valuetype* ret = allocate_values(nonzeroes);
-    sizetype j = 0;
-    for(i=0;i<size;++i)
-        if(bv[i]) {
-            ret[j] = av[i];
-            j++;
-        }
-    return new Vector(ret, nonzeroes, false);
-}
-
-extern "C" EXPORT void* add(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] + bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* equals(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] == bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* greater(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] > bv[i];
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* greater_eq(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] >= bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* sub(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] - bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* v_div(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] / bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* v_pow(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = pow(av[i], bv[i]);
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* v_log(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = log(av[i]);
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* transpose(void* _a) {
-    Matrix* a = (Matrix*)_a;
-    return new Matrix(a->y, a->x, a->values, a->entries, a->size, true);//TODO: keep count of uses before deleting
-}
-
-extern "C" EXPORT valuetype v_sum(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = 0;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av) private(i) reduction(+:ret)
-    for(i=0;i<size;++i)
-        ret += av[i];
-    return ret;
-}
-
-extern "C" EXPORT valuetype v_norm(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = 0;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av) private(i) reduction(+:ret)
-    for(i=0;i<size;++i)
-        ret += av[i]*av[i];
-    return sqrt(ret);
-}
-
-extern "C" EXPORT valuetype v_max(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = av[0];
-    iteratortype i;
-    //#pragma omp parallel for shared(size, av) private(i) reduction(max:ret)
-    for(i=0;i<size;++i)
-        ret = av[i]>ret?av[i]:ret;
-    return ret;
-}
-
-extern "C" EXPORT valuetype v_min(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = av[0];
-    iteratortype i;
-    //#pragma omp parallel for shared(size, av) private(i) reduction(min:ret)
-    for(i=0;i<size;++i)
-        ret = av[i]<ret?av[i]:ret;
-    return ret;
-}
-
-extern "C" EXPORT valuetype m_sum_all(void* _a) {
-    Matrix* a = (Matrix*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = 0;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av) private(i) reduction(+:ret)
-    for(i=0;i<size;++i)
-        ret += av[i];
-    return ret;
-}
-
-extern "C" EXPORT void* m_sum_rows(void* _a) {
-    Matrix* a = (Matrix*)_a;
-    sizetype* ax = a->x;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);//new valuetype[size]();
-    sizetype entries = a->entries;
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = 0;
-    #pragma omp parallel for shared(size, ret, ax, av) private(i)
-    for(i=0;i<entries;++i) {
-        valuetype val = av[i];
-        #pragma omp atomic
-        ret[ax[i]] += av[i];
-     }
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* m_sum_cols(void* _a) {
-    Matrix* a = (Matrix*)_a;
-    sizetype* ay = a->y;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);//new valuetype[size]();
-    sizetype entries = a->entries;
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = 0;
-    #pragma omp parallel for shared(size, ret, ay, av) private(i)
-    for(i=0;i<entries;++i) {
-        valuetype val = av[i];
-        #pragma omp atomic
-        ret[ay[i]] += av[i];
-     }
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT valuetype v_mean(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype ret = 0;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av) private(i) reduction(+:ret)
-    for(i=0;i<size;++i)
-        ret += av[i];
-    if(size!=0)
-        ret /= size;
-    return ret;
-}
-
-extern "C" EXPORT valuetype dot(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype ret = 0;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av, bv) private(i) reduction(+:ret)
-    for(i=0;i<size;++i)
-        ret += av[i]*bv[i];
-    return ret;
-}
-
-extern "C" EXPORT void* v_abs(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i) {
-        valuetype value = av[i];
-        ret[i] = value<0?-value:value;
-      }
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* v_exp(void* _a) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = exp(av[i]);
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void assign(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    iteratortype i;
-    #pragma omp parallel for shared(size, av, bv) private(i)
-    for(i=0;i<size;++i)
-        av[i] = bv[i];
-}
-
-extern "C" EXPORT void* v_mult(void* _a, void* _b) {
-    Vector* a = (Vector*)_a;
-    Vector* b = (Vector*)_b;
-    valuetype* av = a->values;
-    valuetype* bv = b->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av, bv) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] * bv[i];
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* vc_add(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] + b;
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* vc_equals(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] == b;
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* vc_greater(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] > b;
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* vc_greater_eq(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] >= b;
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* vc_less(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] < b;
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* vc_less_eq(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] <= b;
-    return new Vector(ret, size, false);
-}
-
-
-
-extern "C" EXPORT void* vc_sub(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] - b;
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* cv_sub(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = b-av[i];
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* vc_div(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] / b;
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* cv_div(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = b / av[i];
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* vc_pow(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = pow(av[i], b);
-    return new Vector(ret, size, false);
-}
-
-
-extern "C" EXPORT void* cv_pow(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = pow(b, av[i]);
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* vc_mult(void* _a, valuetype b) {
-    Vector* a = (Vector*)_a;
-    valuetype* av = a->values;
-    sizetype size = a->size;
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret, av) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = av[i] * b;
-    return new Vector(ret, size, false);
-}
-
-
-
-extern "C" EXPORT void* matrix(PyObject* x, PyObject* y, PyObject* values, sizetype entries, sizetype size){
-    Py_buffer view_x, view_y, view_v;
-    if (PyObject_GetBuffer(x, &view_x, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1)
-        return NULL;
-    if (PyObject_GetBuffer(y, &view_y, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1) {
-        PyBuffer_Release(&view_x);
-        return NULL;
-    }
-    if (PyObject_GetBuffer(values, &view_v, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1) {
-        PyBuffer_Release(&view_x);
-        PyBuffer_Release(&view_y);
-        return NULL;
-    }
-    if (view_x.ndim != 1 || view_y.ndim !=1 || view_v.ndim != 1) {
-        PyErr_SetString(PyExc_TypeError, "Expected a 1-dimensional arrays");
-        PyBuffer_Release(&view_x);
-        PyBuffer_Release(&view_y);
-        PyBuffer_Release(&view_v);
-        return NULL;
-    }
-    sizetype* x_ret = (sizetype*)malloc(entries * sizeof(sizetype));//new sizetype[entries];
-    sizetype* x_buf = (sizetype*)view_x.buf;
-    #pragma omp parallel
-    for(iteratortype i=0;i<entries;++i)
-        x_ret[i] = x_buf[i];
-
-    sizetype* y_ret = (sizetype*)malloc(entries * sizeof(sizetype));//new sizetype[entries];
-    sizetype* y_buf = (sizetype*)view_y.buf;
-    #pragma omp parallel
-    for(iteratortype i=0;i<entries;++i)
-        y_ret[i] = y_buf[i];
-
-    valuetype* v_ret = (valuetype*)malloc(entries * sizeof(valuetype));//new valuetype[entries];
-    valuetype* v_buf = (valuetype*)view_v.buf;
-    #pragma omp parallel
-    for(iteratortype i=0;i<entries;++i)
-        v_ret[i] = v_buf[i];
-
-    Matrix* mat = new Matrix(x_ret, y_ret, v_ret, entries, size, false);
-    PyBuffer_Release(&view_x);
-    PyBuffer_Release(&view_y);
-    PyBuffer_Release(&view_v);
-    return mat;
-}
-
-//extern "C" EXPORT void* vector(valuetype* values, sizetype size) {return new Vector(values, size);}
-extern "C" EXPORT valuetype get(void* vector, iteratortype i) {return ((Vector*)vector)->values[i];}
-extern "C" EXPORT void set(void* vector, iteratortype i, valuetype value){((Vector*)vector)->values[i] = value;}
-extern "C" EXPORT sizetype len(void* vector){return ((Vector*)vector)->size;}
-extern "C" EXPORT sizetype m_len(void* matrix){return ((Matrix*)matrix)->size;}
-
-extern "C" EXPORT void free_vector(void* obj) {
-    delete (Vector*)obj;
-}
-
-extern "C" EXPORT void free_matrix(void* obj) {
-    delete (Matrix*)obj;
-}
-
-extern "C" EXPORT void clear() {
-    for (std::unordered_map<sizetype, std::vector<valuetype*>*>::iterator it = reusable.begin(); it != reusable.end(); it++) {
-        for(int i=0;i <it->second->size();++i)
-            delete it->second->at(i);
-        delete it->second;
-    }
-    reusable.clear();
-}
-
-extern "C" EXPORT void* vector(PyObject *values, sizetype size) {
-    Py_buffer* view = new Py_buffer();
-    if (PyObject_GetBuffer(values, view, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT) == -1)
-        return NULL;
-    if (view->ndim != 1) {
-        PyErr_SetString(PyExc_TypeError, "Expected a 1-dimensional array");
-        PyBuffer_Release(view);
-        return NULL;
-    }
-    valuetype* ret = allocate_values(size);//view->buf
-    valuetype* buf = (valuetype*)view->buf;
-    for(iteratortype i=0;i<size;++i)
-        ret[i] = buf[i];
-
-    Vector* vect = new Vector(ret, size, false);//, view);
-    PyBuffer_Release(view);
-    delete view;
-    return vect;
-}
-
-
-extern "C" EXPORT void* repeat(valuetype value, sizetype size) {
-    valuetype* ret = allocate_values(size);
-    iteratortype i;
-    #pragma omp parallel for shared(size, ret) private(i)
-    for(i=0;i<size;++i)
-        ret[i] = value;
-    return new Vector(ret, size, false);
-}
-
-extern "C" EXPORT void* v_copy(void* _vector) {
-    Vector* vector = (Vector*)_vector;
-    return new Vector(vector->values, vector->size);
-}
-
-extern "C" EXPORT void* get_values(void* _matrix) {
-    Matrix* matrix = (Matrix*)_matrix;
-    return new Vector(matrix->values, matrix->entries, false);
-}
-
-extern "C" EXPORT void* get_rows(void* _matrix) {
-    Matrix* matrix = (Matrix*)_matrix;
-    sizetype entries = matrix->entries;
-    iteratortype i;
-    sizetype* x = matrix->x;
-    valuetype* ret = new valuetype[entries];
-    #pragma omp parallel for shared(entries, x, ret) private(i)
-    for(i=0;i<entries;++i)
-        ret[i] = (valuetype)x[i];
-    return new Vector(ret, entries, false);
-}
-
-extern "C" EXPORT void* get_cols(void* _matrix) {
-    Matrix* matrix = (Matrix*)_matrix;
-    sizetype entries = matrix->entries;
-    iteratortype i;
-    sizetype* y = matrix->y;
-    valuetype* ret = new valuetype[entries];
-    #pragma omp parallel for shared(entries, y, ret) private(i)
-    for(i=0;i<entries;++i)
-        ret[i] = (valuetype)y[i];
-    return new Vector(ret, entries, false);
-}
-
-int myrank;
-int groupsize;
-extern "C" EXPORT void set_number_of_threads(int threads) {
-    omp_set_dynamic(0);
-    omp_set_num_threads(threads);
-}
-
-extern "C" EXPORT void* v_to_array(void* _vector) {
-    Vector* vector = (Vector*)_vector;
-    return vector->values;
+            sizetype entries = info_values.shape[0];
+            if (info_x.shape[0]!=entries)
+                throw std::runtime_error("Mismatching size between x and values.");
+            if (info_y.shape[0]!=entries)
+                throw std::runtime_error("Mismatching size between y and values.");
+
+            return new Matrix(
+                static_cast<sizetype*>(info_x.ptr),
+                static_cast<sizetype*>(info_y.ptr),
+                static_cast<valuetype*>(info_values.ptr),
+                entries,
+                size,
+                true);
+        }))
+        .def("__matmul__", [](Matrix &self, Vector &vec) { return (Vector *)multiply(&self, &vec); })
+        .def("__rmatmul__", [](Matrix &self, Vector &vec) { return (Vector *)rmultiply(&self, &vec); })
+        .def("T", [](Matrix &self) { return (Matrix *)transpose(&self); })
+        .def("sum", [](Matrix &self) { return m_sum_all(&self); })
+        .def("sum", [](Matrix &self, int axis) {
+                if(axis==0)
+                    return (Vector *)m_sum_rows(&self);
+                return (Vector *)m_sum_cols(&self);
+        }, py::arg("axis") = 0)
+        .def("values", [](Matrix &self) { return (Vector *)get_values(&self); })
+        .def("rows", [](Matrix &self) { return (Vector *)get_rows(&self); })
+        .def("cols", [](Matrix &self) { return (Vector *)get_cols(&self); });
+
+    // Module-level functions
+    m.def("clear", &clear, "Clear reusable cache");
+    m.def("repeat", [](valuetype value, sizetype size) {
+        return (Vector *)repeat(value, size);
+    }, "Create a vector by repeating a value");
+    m.def("set_number_of_threads", &set_number_of_threads, "Set the number of OpenMP threads");
 }

@@ -1,57 +1,28 @@
-#  python setup.py build
-#  python setup.py bdist_wheel
-#  twine upload dist/*
-
-from setuptools import setup, Extension, find_packages
-from distutils.command.build_ext import build_ext as build_ext_orig
-import platform
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
+import pybind11
 
 
-with open("README.md", "r") as file:
-    long_description = file.read()
-
-
-class build_ext(build_ext_orig):
-    def build_extension(self, ext):
-        self._ctypes = isinstance(ext, Extension)
-        return super().build_extension(ext)
-
-    def get_export_symbols(self, ext):
-        if self._ctypes:
-            return ext.export_symbols
-        return super().get_export_symbols(ext)
-
-    def get_ext_filename(self, ext_name):
-        if self._ctypes:
-            return ext_name + '.pyd'
-        return super().get_ext_filename(ext_name)
-
+ext_modules = [
+    Extension(
+        'matvec',
+        ['matvec.cpp'],
+        include_dirs=[pybind11.get_include()],
+        language='c++',
+        extra_compile_args=['-O3', '-std=c++17', '-fopenmp'],
+        extra_link_args=['-fopenmp'],
+    ),
+]
 
 setup(
     name='matvec',
-    version='0.1.7',
+    version='0.2.0',
     author="Emmanouil (Manios) Krasanakis",
     author_email="maniospas@hotmail.com",
     description="Fast matrix transforms",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     url="https://github.com/maniospas/matvec",
-    packages=find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
-    ],
-    install_requires=["numpy"
-    ],
-    py_modules=["matvec"],
-    ext_modules=[
-        Extension(
-            "matvec/matvec.py",
-            ["matvec.cpp"],
-            extra_compile_args=['-O2'] + (['-openmp'] if platform.system() == 'Windows' else ['-fopenmp']),
-            extra_link_args=['-fopenmp'],
-        ),
-    ],
+    ext_modules=ext_modules,
+    install_requires=['numpy'],  # Remove 'pybind11' from here
     cmdclass={'build_ext': build_ext},
+    zip_safe=False,
 )
