@@ -1,3 +1,4 @@
+import numpy
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import pybind11
@@ -7,7 +8,7 @@ ext_modules = [
     Extension(
         'matvec',
         ['matvec.cpp'],
-        include_dirs=[pybind11.get_include()],
+        include_dirs=[pybind11.get_include(), numpy.get_include()],
         language='c++',
         extra_compile_args=['-O3', '-std=c++17', '-fopenmp'],
         extra_link_args=['-fopenmp'],
