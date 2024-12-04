@@ -22,7 +22,7 @@ setup(
     description="Fast matrix transforms",
     url="https://github.com/maniospas/matvec",
     ext_modules=ext_modules,
-    install_requires=['numpy'],  # Remove 'pybind11' from here
+    install_requires=['numpy', 'pybind11'],
     cmdclass={'build_ext': build_ext},
     zip_safe=False,
 )
